@@ -2,46 +2,189 @@
  * Calculadora de batalhas para Call of Roma
  * Implementa a lógica de cálculo baseada no sistema de batalhas por turnos
  * Baseado no paper: Coevolutionary Procedural Generation of Battle Formations
+ * Melhorado para calcular por slot individual (como no replay do jogo)
  */
 
-import { Hero, BattleFormation, BattleResult, BattleRound, FormationStats } from '@/types/battle';
+import { Hero, BattleFormation, BattleResult, BattleRound, FormationStats, TroopSlot, UnitType } from '@/types/battle';
+import { unitTypes } from '@/data/unitTypes';
+import { calculateHeroFinalStats } from './heroCalculator';
 
 /**
- * Calcula o dano causado por um herói
+ * Representa um slot de batalha com suas tropas e stats calculados
  */
-function calculateDamage(attacker: Hero, defender: Hero): number {
-  // Fórmula simplificada: dano = ataque - defesa (mínimo 1)
-  const baseDamage = Math.max(1, attacker.attack - defender.defense);
+interface BattleSlot {
+  slotIndex: number; // 1-6
+  unitType: UnitType;
+  quantity: number; // Quantidade de tropas no slot
+  unitData: typeof unitTypes[UnitType];
+  // Stats calculados do slot (considerando equipamentos se for tropa superior)
+  attack: number;
+  defense: number;
+  health: number;
+  speed: number;
+}
+
+/**
+ * Representa um herói em batalha com seus slots
+ */
+interface BattleHero {
+  hero: Hero;
+  heroStats: {
+    attack: number;
+    defense: number;
+    health: number;
+    speed: number;
+  };
+  slots: BattleSlot[];
+}
+
+/**
+ * Calcula os stats de um slot individual
+ */
+function calculateSlotStats(
+  slot: TroopSlot,
+  slotIndex: number,
+  heroStats: { attack: number; defense: number; health: number }
+): BattleSlot {
+  const unitData = unitTypes[slot.unitType];
+  const isSuperior = slotIndex <= 3; // Slots 1-3 são superiores
   
-  // Multiplicador baseado no número de soldados
-  const soldierMultiplier = Math.log10(attacker.soldiers + 1) / 2;
+  let slotAttack = unitData.baseAttack;
+  let slotDefense = unitData.baseDefense;
+  let slotHealth = unitData.baseHP;
+  let slotSpeed = unitData.speed;
   
-  // Dano total
-  const totalDamage = Math.floor(baseDamage * (1 + soldierMultiplier));
+  // Tropas superiores recebem bônus de equipamentos
+  if (isSuperior && slot.unitType !== 'none') {
+    slotAttack += heroStats.attack;
+    slotDefense += heroStats.defense;
+    slotHealth += heroStats.health;
+  }
+  
+  return {
+    slotIndex,
+    unitType: slot.unitType,
+    quantity: slot.quantity,
+    unitData,
+    attack: slotAttack,
+    defense: slotDefense,
+    health: slotHealth,
+    speed: slotSpeed,
+  };
+}
+
+/**
+ * Calcula o dano causado por um slot atacante contra um slot defensor
+ */
+function calculateSlotDamage(attackerSlot: BattleSlot, defenderSlot: BattleSlot): number {
+  if (attackerSlot.quantity <= 0 || attackerSlot.unitType === 'none') {
+    return 0;
+  }
+  
+  if (defenderSlot.quantity <= 0 || defenderSlot.unitType === 'none') {
+    return 0;
+  }
+  
+  // Dano base = ataque - defesa (mínimo 1)
+  const baseDamage = Math.max(1, attackerSlot.attack - defenderSlot.defense);
+  
+  // Dano por unidade (considerando o dano base da unidade)
+  const unitDamage = (attackerSlot.unitData.baseDamage.min + attackerSlot.unitData.baseDamage.max) / 2;
+  
+  // Multiplicador baseado no número de tropas no slot
+  const quantityMultiplier = Math.log10(attackerSlot.quantity + 1) / 2;
+  
+  // Dano total do slot
+  const totalDamage = Math.floor((baseDamage + unitDamage) * (1 + quantityMultiplier) * attackerSlot.quantity);
   
   return totalDamage;
 }
 
 /**
- * Calcula o dano total de uma formação contra outra
+ * Aplica dano a um slot específico
  */
-function calculateFormationDamage(
-  attackingFormation: BattleFormation,
-  defendingFormation: BattleFormation
+function applyDamageToSlot(slot: BattleSlot, damage: number): void {
+  if (slot.quantity <= 0 || slot.unitType === 'none') {
+    return;
+  }
+  
+  // Calcula quantas tropas morrem baseado no HP por unidade
+  const hpPerUnit = slot.health;
+  if (hpPerUnit <= 0) return;
+  
+  const unitsKilled = Math.floor(damage / hpPerUnit);
+  slot.quantity = Math.max(0, slot.quantity - unitsKilled);
+}
+
+/**
+ * Converte uma formação em heróis de batalha com slots calculados
+ */
+function createBattleHeroes(formation: BattleFormation): BattleHero[] {
+  return formation.heroes.map(hero => {
+    const heroStats = calculateHeroFinalStats(hero);
+    
+    const slots: BattleSlot[] = [
+      calculateSlotStats(hero.troopDistribution.slot1, 1, heroStats),
+      calculateSlotStats(hero.troopDistribution.slot2, 2, heroStats),
+      calculateSlotStats(hero.troopDistribution.slot3, 3, heroStats),
+      calculateSlotStats(hero.troopDistribution.slot4, 4, heroStats),
+      calculateSlotStats(hero.troopDistribution.slot5, 5, heroStats),
+      calculateSlotStats(hero.troopDistribution.slot6, 6, heroStats),
+    ];
+    
+    return {
+      hero,
+      heroStats,
+      slots,
+    };
+  });
+}
+
+/**
+ * Calcula o total de soldados de uma formação de batalha
+ */
+function getTotalSoldiers(battleHeroes: BattleHero[]): number {
+  return battleHeroes.reduce((total, battleHero) => {
+    return total + battleHero.slots.reduce((sum, slot) => sum + slot.quantity, 0);
+  }, 0);
+}
+
+/**
+ * Calcula o dano total de uma formação contra outra (por slot)
+ */
+function calculateFormationDamageBySlots(
+  attackingHeroes: BattleHero[],
+  defendingHeroes: BattleHero[]
 ): number {
   let totalDamage = 0;
   
-  // Cada herói atacante causa dano
-  for (const attacker of attackingFormation.heroes) {
-    if (attacker.soldiers <= 0) continue;
-    
-    // Encontra o defensor mais fraco ou distribui o dano
-    const weakestDefender = defendingFormation.heroes
-      .filter(h => h.soldiers > 0)
-      .sort((a, b) => a.defense - b.defense)[0];
-    
-    if (weakestDefender) {
-      totalDamage += calculateDamage(attacker, weakestDefender);
+  // Cada herói atacante
+  for (const attackerHero of attackingHeroes) {
+    // Cada slot do herói atacante
+    for (const attackerSlot of attackerHero.slots) {
+      if (attackerSlot.quantity <= 0 || attackerSlot.unitType === 'none') {
+        continue;
+      }
+      
+      // Encontra o slot defensor mais fraco (menor defesa)
+      let weakestDefenderSlot: BattleSlot | null = null;
+      let weakestDefense = Infinity;
+      
+      for (const defenderHero of defendingHeroes) {
+        for (const defenderSlot of defenderHero.slots) {
+          if (defenderSlot.quantity > 0 && defenderSlot.unitType !== 'none') {
+            if (defenderSlot.defense < weakestDefense) {
+              weakestDefense = defenderSlot.defense;
+              weakestDefenderSlot = defenderSlot;
+            }
+          }
+        }
+      }
+      
+      if (weakestDefenderSlot) {
+        const slotDamage = calculateSlotDamage(attackerSlot, weakestDefenderSlot);
+        totalDamage += slotDamage;
+      }
     }
   }
   
@@ -49,42 +192,56 @@ function calculateFormationDamage(
 }
 
 /**
- * Distribui o dano entre os heróis de uma formação
+ * Distribui dano entre os slots de uma formação
  */
-function distributeDamage(
-  formation: BattleFormation,
+function distributeDamageToFormation(
+  battleHeroes: BattleHero[],
   totalDamage: number
 ): void {
-  // Distribui o dano proporcionalmente entre os heróis com soldados
-  const activeHeroes = formation.heroes.filter(h => h.soldiers > 0);
+  // Coleta todos os slots ativos
+  const activeSlots: BattleSlot[] = [];
+  for (const battleHero of battleHeroes) {
+    for (const slot of battleHero.slots) {
+      if (slot.quantity > 0 && slot.unitType !== 'none') {
+        activeSlots.push(slot);
+      }
+    }
+  }
   
-  if (activeHeroes.length === 0) return;
+  if (activeSlots.length === 0) return;
   
-  const damagePerHero = Math.floor(totalDamage / activeHeroes.length);
-  const remainder = totalDamage % activeHeroes.length;
+  // Distribui dano proporcionalmente baseado na quantidade de tropas
+  const totalTroops = activeSlots.reduce((sum, slot) => sum + slot.quantity, 0);
   
-  activeHeroes.forEach((hero, index) => {
-    const damage = damagePerHero + (index < remainder ? 1 : 0);
-    const soldiersLost = Math.min(
-      hero.soldiers,
-      Math.floor(damage / Math.max(1, hero.defense))
-    );
-    hero.soldiers = Math.max(0, hero.soldiers - soldiersLost);
-  });
+  if (totalTroops === 0) return;
+  
+  let remainingDamage = totalDamage;
+  
+  for (const slot of activeSlots) {
+    const damageRatio = slot.quantity / totalTroops;
+    const slotDamage = Math.floor(totalDamage * damageRatio);
+    applyDamageToSlot(slot, slotDamage);
+    remainingDamage -= slotDamage;
+  }
+  
+  // Aplica dano restante ao primeiro slot ativo (se houver)
+  if (remainingDamage > 0 && activeSlots.length > 0) {
+    applyDamageToSlot(activeSlots[0], remainingDamage);
+  }
 }
 
 /**
- * Calcula uma batalha completa entre duas formações
+ * Calcula uma batalha completa entre duas formações (por slot)
  */
 export function calculateBattle(
   attackFormation: BattleFormation,
   defenseFormation: BattleFormation
 ): BattleResult {
-  // Cria cópias para não modificar os originais
-  const attack = JSON.parse(JSON.stringify(attackFormation)) as BattleFormation;
-  const defense = JSON.parse(JSON.stringify(defenseFormation)) as BattleFormation;
+  // Cria heróis de batalha com slots calculados
+  let attackHeroes = createBattleHeroes(attackFormation);
+  let defenseHeroes = createBattleHeroes(defenseFormation);
   
-  const maxRounds = 50; // Limite de rodadas para evitar loops infinitos
+  const maxRounds = 50;
   const rounds: BattleRound[] = [];
   
   let round = 0;
@@ -93,37 +250,25 @@ export function calculateBattle(
     round++;
     
     // Conta soldados antes da rodada
-    const attackSoldiersBefore = attack.heroes.reduce(
-      (sum, h) => sum + h.soldiers,
-      0
-    );
-    const defenseSoldiersBefore = defense.heroes.reduce(
-      (sum, h) => sum + h.soldiers,
-      0
-    );
+    const attackSoldiersBefore = getTotalSoldiers(attackHeroes);
+    const defenseSoldiersBefore = getTotalSoldiers(defenseHeroes);
     
     // Verifica se alguém já perdeu
     if (attackSoldiersBefore === 0 || defenseSoldiersBefore === 0) {
       break;
     }
     
-    // Ataque ataca primeiro (baseado em velocidade, mas simplificado)
-    const attackDamage = calculateFormationDamage(attack, defense);
-    const defenseDamage = calculateFormationDamage(defense, attack);
+    // Calcula dano por slot
+    const attackDamage = calculateFormationDamageBySlots(attackHeroes, defenseHeroes);
+    const defenseDamage = calculateFormationDamageBySlots(defenseHeroes, attackHeroes);
     
-    // Aplica dano
-    distributeDamage(defense, attackDamage);
-    distributeDamage(attack, defenseDamage);
+    // Aplica dano aos slots
+    distributeDamageToFormation(defenseHeroes, attackDamage);
+    distributeDamageToFormation(attackHeroes, defenseDamage);
     
     // Conta soldados depois da rodada
-    const attackSoldiersAfter = attack.heroes.reduce(
-      (sum, h) => sum + h.soldiers,
-      0
-    );
-    const defenseSoldiersAfter = defense.heroes.reduce(
-      (sum, h) => sum + h.soldiers,
-      0
-    );
+    const attackSoldiersAfter = getTotalSoldiers(attackHeroes);
+    const defenseSoldiersAfter = getTotalSoldiers(defenseHeroes);
     
     rounds.push({
       round,
@@ -144,26 +289,18 @@ export function calculateBattle(
   }
   
   // Calcula resultados finais
-  const finalAttackSoldiers = attack.heroes.reduce(
-    (sum, h) => sum + h.soldiers,
-    0
-  );
-  const finalDefenseSoldiers = defense.heroes.reduce(
-    (sum, h) => sum + h.soldiers,
-    0
-  );
+  const finalAttackSoldiers = getTotalSoldiers(attackHeroes);
+  const finalDefenseSoldiers = getTotalSoldiers(defenseHeroes);
   
-  const initialAttackSoldiers = attackFormation.heroes.reduce(
-    (sum, h) => sum + h.soldiers,
-    0
-  );
-  const initialDefenseSoldiers = defenseFormation.heroes.reduce(
-    (sum, h) => sum + h.soldiers,
-    0
-  );
+  const initialAttackSoldiers = getTotalSoldiers(createBattleHeroes(attackFormation));
+  const initialDefenseSoldiers = getTotalSoldiers(createBattleHeroes(defenseFormation));
   
-  const attackRemainingHeroes = attack.heroes.filter(h => h.soldiers > 0).length;
-  const defenseRemainingHeroes = defense.heroes.filter(h => h.soldiers > 0).length;
+  const attackRemainingHeroes = attackHeroes.filter(bh => 
+    getTotalSoldiers([bh]) > 0
+  ).length;
+  const defenseRemainingHeroes = defenseHeroes.filter(bh => 
+    getTotalSoldiers([bh]) > 0
+  ).length;
   
   // Determina vencedor
   let winner: 'attack' | 'defense' | 'draw';
@@ -229,16 +366,32 @@ export function calculateBattle(
  * Calcula estatísticas de uma formação
  */
 export function calculateFormationStats(formation: BattleFormation): FormationStats {
+  const battleHeroes = createBattleHeroes(formation);
+  
+  let totalAttack = 0;
+  let totalDefense = 0;
+  let totalHealth = 0;
+  let totalSpeed = 0;
+  let speedCount = 0;
+  
+  for (const battleHero of battleHeroes) {
+    for (const slot of battleHero.slots) {
+      if (slot.quantity > 0 && slot.unitType !== 'none') {
+        totalAttack += slot.attack * slot.quantity;
+        totalDefense += slot.defense * slot.quantity;
+        totalHealth += slot.health * slot.quantity;
+        totalSpeed += slot.speed;
+        speedCount++;
+      }
+    }
+  }
+  
   return {
-    totalSoldiers: formation.heroes.reduce((sum, h) => sum + h.soldiers, 0),
-    totalAttack: formation.heroes.reduce((sum, h) => sum + h.attack, 0),
-    totalDefense: formation.heroes.reduce((sum, h) => sum + h.defense, 0),
-    totalHealth: formation.heroes.reduce((sum, h) => sum + h.health, 0),
-    averageSpeed:
-      formation.heroes.length > 0
-        ? formation.heroes.reduce((sum, h) => sum + h.speed, 0) /
-          formation.heroes.length
-        : 0,
+    totalSoldiers: getTotalSoldiers(battleHeroes),
+    totalAttack,
+    totalDefense,
+    totalHealth,
+    averageSpeed: speedCount > 0 ? totalSpeed / speedCount : 0,
     heroCount: formation.heroes.length,
   };
 }
