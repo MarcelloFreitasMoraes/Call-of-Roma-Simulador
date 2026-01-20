@@ -1,65 +1,147 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { BattleFormation, BattleResult } from '@/types/battle';
+import { calculateBattle } from '@/utils/battleCalculator';
+import FormationEditor from '@/components/FormationEditor';
+import BattleResultView from '@/components/BattleResultView';
 
 export default function Home() {
+  const [attackFormation, setAttackFormation] = useState<BattleFormation>({
+    heroes: [],
+    side: 'attack',
+  });
+
+  const [defenseFormation, setDefenseFormation] = useState<BattleFormation>({
+    heroes: [],
+    side: 'defense',
+  });
+
+  const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
+
+  const handleCalculate = () => {
+    if (attackFormation.heroes.length === 0 || defenseFormation.heroes.length === 0) {
+      alert('Por favor, adicione pelo menos um herói em cada formação!');
+      return;
+    }
+
+    const result = calculateBattle(attackFormation, defenseFormation);
+    setBattleResult(result);
+
+    // Scroll suave para o resultado
+    setTimeout(() => {
+      const resultElement = document.getElementById('battle-result');
+      if (resultElement) {
+        resultElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-blue-50 to-purple-50">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
+        <div className="container mx-auto px-4 py-6">
+          <h1 className="text-4xl font-bold mb-2">⚔️ Call of Roma - Calculadora de Batalhas</h1>
+          <p className="text-blue-100 text-lg">
+            Baseado no paper: &quot;Coevolutionary Procedural Generation of Battle Formations&quot;
           </p>
+          <p className="text-blue-200 text-sm mt-1">SBGames 2014 - André Siqueira Ruela</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        {/* Botão de Calcular */}
+        <div className="mb-8 text-center">
+          <button
+            onClick={handleCalculate}
+            disabled={
+              attackFormation.heroes.length === 0 || defenseFormation.heroes.length === 0
+            }
+            className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xl font-bold rounded-xl shadow-lg hover:from-green-600 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            🎯 Calcular Batalha
+          </button>
+        </div>
+
+        {/* Formações */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Formação de Ataque */}
+          <FormationEditor
+            formation={attackFormation}
+            onUpdate={setAttackFormation}
+            title="⚔️ Formação de Ataque"
+            color="from-blue-500 to-blue-700"
+          />
+
+          {/* Formação de Defesa */}
+          <FormationEditor
+            formation={defenseFormation}
+            onUpdate={setDefenseFormation}
+            title="🛡️ Formação de Defesa"
+            color="from-red-500 to-red-700"
+          />
+        </div>
+
+        {/* Resultado da Batalha */}
+        {battleResult && (
+          <div id="battle-result" className="mt-8">
+            <BattleResultView result={battleResult} />
+          </div>
+        )}
+
+        {/* Informações sobre o Sistema */}
+        <div className="mt-12 bg-white rounded-xl shadow-lg p-6 border-2 border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">📚 Sobre o Sistema</h2>
+          <div className="prose max-w-none text-gray-700">
+            <p className="mb-4">
+              Esta calculadora implementa o sistema de batalhas do jogo{' '}
+              <strong>Call of Roma</strong>, baseado no paper acadêmico apresentado no SBGames 2014.
+            </p>
+            <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-3">
+              Características do Sistema:
+            </h3>
+            <ul className="list-disc list-inside space-y-2 mb-4">
+              <li>
+                <strong>Sistema de Batalhas por Turnos:</strong> Simula batalhas baseadas em turnos
+                entre duas formações
+              </li>
+              <li>
+                <strong>Múltiplos Heróis:</strong> Cada formação pode ter vários heróis com
+                características individuais
+              </li>
+              <li>
+                <strong>5 Métricas de Performance:</strong> Avalia o resultado da batalha usando 5
+                medidas diferentes:
+              </li>
+            </ul>
+            <ol className="list-decimal list-inside space-y-2 mb-4 ml-4">
+              <li>Número de soldados sobreviventes do vencedor</li>
+              <li>Diferença de soldados (ataque - defesa)</li>
+              <li>Taxa de sobrevivência de soldados</li>
+              <li>Número de heróis sobreviventes</li>
+              <li>Eficiência geral (combinação ponderada)</li>
+            </ol>
+            <p className="text-sm text-gray-600 mt-4">
+              <em>
+                Baseado em: Ruela, A. S., & Guimarães, F. G. (2014). Coevolutionary Procedural
+                Generation of Battle Formations in Massively Multiplayer Online Strategy Games.
+                SBGames 2014.
+              </em>
+            </p>
+          </div>
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white mt-12 py-6">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-gray-400">
+            Call of Roma Calculadora © 2026 | Desenvolvido com Next.js + TypeScript
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
