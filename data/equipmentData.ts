@@ -213,19 +213,19 @@ export const equipmentDatabase: Record<string, Equipment> = {
 
   // Conjunto Thor
   'necklace-thor-9': {
-    type: 'accessory',
+      type: 'necklace',
     name: 'Thor Necklace+9',
     hp: 85,
     defense: 66,
   },
   'ring-thor-9': {
-    type: 'accessory',
+      type: 'ring',
     name: 'Thor Ring+9',
     hp: 103,
     damage: 65,
   },
   'belt-thor-9': {
-    type: 'accessory',
+      type: 'belt',
     name: 'Thor Belt+9',
     hp: 64,
     defense: 66,
@@ -236,6 +236,12 @@ export const equipmentDatabase: Record<string, Equipment> = {
     hp: 108,
     defense: 41,
   },
+    'steed-thor-9': {
+        type: 'mount',
+        name: 'Thor Steed+9',
+        damage: 35,
+        attack: 38,
+    },
 
   // Conjunto Neptunus
   'helmet-neptunus': {
@@ -282,24 +288,209 @@ export const equipmentDatabase: Record<string, Equipment> = {
  */
 export const equipmentByType = {
   helmet: Object.entries(equipmentDatabase)
-    .filter(([_, eq]) => eq.type === 'helmet')
+        .filter(([, eq]) => eq.type === 'helmet')
     .map(([key, eq]) => ({ key, ...eq })),
   armor: Object.entries(equipmentDatabase)
-    .filter(([_, eq]) => eq.type === 'armor')
+      .filter(([, eq]) => eq.type === 'armor')
     .map(([key, eq]) => ({ key, ...eq })),
   weapon: Object.entries(equipmentDatabase)
-    .filter(([_, eq]) => eq.type === 'weapon')
+      .filter(([, eq]) => eq.type === 'weapon')
     .map(([key, eq]) => ({ key, ...eq })),
   boots: Object.entries(equipmentDatabase)
-    .filter(([_, eq]) => eq.type === 'boots')
+      .filter(([, eq]) => eq.type === 'boots')
     .map(([key, eq]) => ({ key, ...eq })),
   shield: Object.entries(equipmentDatabase)
-    .filter(([_, eq]) => eq.type === 'shield')
+      .filter(([, eq]) => eq.type === 'shield')
     .map(([key, eq]) => ({ key, ...eq })),
   accessory: Object.entries(equipmentDatabase)
-    .filter(([_, eq]) => eq.type === 'accessory')
-    .map(([key, eq]) => ({ key, ...eq })),
+        .filter(([, eq]) => eq.type === 'accessory')
+        .map(([key, eq]) => ({ key, ...eq })),
+    mount: Object.entries(equipmentDatabase)
+        .filter(([, eq]) => eq.type === 'mount')
+        .map(([key, eq]) => ({ key, ...eq })),
+    ring: Object.entries(equipmentDatabase)
+        .filter(([, eq]) => eq.type === 'ring')
+        .map(([key, eq]) => ({ key, ...eq })),
+    necklace: Object.entries(equipmentDatabase)
+        .filter(([, eq]) => eq.type === 'necklace')
+        .map(([key, eq]) => ({ key, ...eq })),
+    belt: Object.entries(equipmentDatabase)
+        .filter(([, eq]) => eq.type === 'belt')
+        .map(([key, eq]) => ({ key, ...eq })),
 };
+
+/**
+ * Identifica o conjunto de um equipamento pela chave
+ */
+export function getEquipmentSet(key: string): string | null {
+    if (key === 'none') return null;
+
+    // Remove prefixos de tipo e sufixos numéricos
+    const parts = key.split('-');
+    if (parts.length < 2) return null;
+
+    // Remove o primeiro elemento (tipo: helmet, armor, etc)
+    const setParts = parts.slice(1);
+
+    // Remove sufixos numéricos como "-9"
+    const setKey = setParts.join('-').replace(/-\d+$/, '');
+
+    return setKey || null;
+}
+
+/**
+ * Mapeamento de conjuntos para seus equipamentos completos
+ */
+export const equipmentSets: Record<string, {
+    name: string;
+    equipment: {
+        helmet?: string;
+        armor?: string;
+        weapon?: string;
+        boots?: string;
+        shield?: string;
+        accessory?: string;
+        mount?: string;
+        ring?: string;
+        necklace?: string;
+        belt?: string;
+    };
+}> = {
+    'mars': {
+        name: 'Marte',
+        equipment: {
+            helmet: 'helmet-mars',
+            armor: 'armor-mars',
+            weapon: 'weapon-mars',
+            boots: 'boots-mars',
+            shield: 'shield-mars',
+        },
+    },
+    'brilliant': {
+        name: 'Brilhante',
+        equipment: {
+            helmet: 'helmet-brilliant',
+            armor: 'armor-brilliant',
+            weapon: 'weapon-brilliant',
+            boots: 'boots-brilliant',
+            shield: 'shield-brilliant',
+        },
+    },
+    'vulcan': {
+        name: 'Vulcan',
+        equipment: {
+            helmet: 'helmet-vulcan',
+            armor: 'armor-vulcan',
+            weapon: 'weapon-vulcan',
+            boots: 'boots-vulcan',
+            shield: 'shield-vulcan',
+        },
+    },
+    'spartan': {
+        name: 'Espartano',
+        equipment: {
+            helmet: 'helmet-spartan',
+            armor: 'armor-spartan',
+            weapon: 'weapon-spartan',
+            boots: 'boots-spartan',
+            shield: 'shield-spartan',
+        },
+    },
+    'lunar': {
+        name: 'Lunar',
+        equipment: {
+            helmet: 'helmet-lunar',
+            armor: 'armor-lunar',
+            weapon: 'weapon-lunar',
+            boots: 'boots-lunar',
+            shield: 'shield-lunar',
+        },
+    },
+    'loki': {
+        name: 'Loki',
+        equipment: {
+            helmet: 'helmet-loki',
+            armor: 'armor-loki',
+            weapon: 'scepter-loki',
+            boots: 'boots-loki',
+            shield: 'bracer-loki',
+        },
+    },
+    'thor': {
+        name: 'Thor',
+        equipment: {
+            accessory: 'pendant-thor-9',
+            mount: 'steed-thor-9',
+            ring: 'ring-thor-9',
+            necklace: 'necklace-thor-9',
+            belt: 'belt-thor-9',
+        },
+    },
+    'neptunus': {
+        name: 'Neptunus',
+        equipment: {
+            helmet: 'helmet-neptunus',
+            armor: 'armor-neptunus',
+            weapon: 'trident-neptunus',
+            boots: 'boots-neptunus',
+            shield: 'shield-neptunus',
+        },
+    },
+};
+
+/**
+ * Conjuntos de equipamentos (não incluem acessórios)
+ */
+export const equipmentOnlySets: Record<string, {
+    name: string;
+    equipment: {
+        helmet?: string;
+        armor?: string;
+        weapon?: string;
+        boots?: string;
+        shield?: string;
+    };
+}> = {
+    'mars': equipmentSets.mars,
+    'brilliant': equipmentSets.brilliant,
+    'vulcan': equipmentSets.vulcan,
+    'spartan': equipmentSets.spartan,
+    'lunar': equipmentSets.lunar,
+    'loki': equipmentSets.loki,
+    'neptunus': equipmentSets.neptunus,
+};
+
+/**
+ * Conjuntos de acessórios apenas
+ */
+export const accessoryOnlySets: Record<string, {
+    name: string;
+    equipment: {
+        accessory?: string;
+        mount?: string;
+        ring?: string;
+        necklace?: string;
+        belt?: string;
+    };
+}> = {
+    'thor': equipmentSets.thor,
+};
+
+/**
+ * Lista de conjuntos de equipamentos para o select master
+ */
+export const availableEquipmentSets = Object.entries(equipmentOnlySets).map(([key, set]) => ({
+    value: key,
+    label: set.name,
+}));
+
+/**
+ * Lista de conjuntos de acessórios para o select master
+ */
+export const availableAccessorySets = Object.entries(accessoryOnlySets).map(([key, set]) => ({
+    value: key,
+    label: set.name,
+}));
 
 /**
  * Medalhas disponíveis

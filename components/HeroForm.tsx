@@ -1,7 +1,7 @@
 'use client';
 import { Hero, HeroPotential, MedalType, UnitType } from '@/types/battle';
 import { useState, useEffect } from 'react';
-import { equipmentByType, equipmentDatabase } from '@/data/equipmentData';
+import { equipmentByType, equipmentDatabase, equipmentOnlySets, accessoryOnlySets, availableEquipmentSets, availableAccessorySets } from '@/data/equipmentData';
 import { superiorUnits, inferiorUnits } from '@/data/unitTypes';
 import { calculateHeroFinalStats, calculateTotalSoldiers } from '@/utils/heroCalculator';
 
@@ -22,11 +22,59 @@ const medalOptions: { value: MedalType; label: string }[] = [
 export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false }: HeroFormProps) {
   const [formData, setFormData] = useState<Hero>(hero);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedEquipmentSet, setSelectedEquipmentSet] = useState<string>('none');
+  const [selectedAccessorySet, setSelectedAccessorySet] = useState<string>('none');
 
-  // Sincroniza com o hero externo quando ele muda (sem efeito em cascata)
+  // Verifica qual conjunto de equipamentos está aplicado
+  const checkCurrentEquipmentSet = (heroData: Hero) => {
+    for (const [setKey, setData] of Object.entries(equipmentOnlySets)) {
+      let matches = true;
+      for (const [slot, expectedKey] of Object.entries(setData.equipment)) {
+        const currentKey = Object.keys(equipmentDatabase).find(
+          k => equipmentDatabase[k].name === heroData.equipment[slot as keyof typeof heroData.equipment]?.name
+        );
+        if (currentKey !== expectedKey) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches) {
+        setSelectedEquipmentSet(setKey);
+        return;
+      }
+    }
+    setSelectedEquipmentSet('none');
+  };
+
+  // Verifica qual conjunto de acessórios está aplicado
+  const checkCurrentAccessorySet = (heroData: Hero) => {
+    for (const [setKey, setData] of Object.entries(accessoryOnlySets)) {
+      let matches = true;
+      for (const [slot, expectedKey] of Object.entries(setData.equipment)) {
+        const currentKey = Object.keys(equipmentDatabase).find(
+          k => equipmentDatabase[k].name === heroData.equipment[slot as keyof typeof heroData.equipment]?.name
+        );
+        if (currentKey !== expectedKey) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches) {
+        setSelectedAccessorySet(setKey);
+        return;
+      }
+    }
+    setSelectedAccessorySet('none');
+  };
+
+  // Sincroniza com o hero externo quando ele muda
   useEffect(() => {
     setFormData(hero);
-  }, [hero]);
+    // Verifica qual conjunto está aplicado atualmente
+    checkCurrentEquipmentSet(hero);
+    checkCurrentAccessorySet(hero);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hero.id]);
 
   const updateHero = (updated: Hero) => {
     // Recalcula atributos finais antes de atualizar
@@ -89,7 +137,10 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
     updateHero(updated);
   };
 
-  const handleEquipmentChange = (slot: 'helmet' | 'armor' | 'weapon' | 'boots' | 'shield' | 'accessory', key: string) => {
+  const handleEquipmentChange = (
+    slot: 'helmet' | 'armor' | 'weapon' | 'boots' | 'shield' | 'accessory' | 'mount' | 'ring' | 'necklace' | 'belt',
+    key: string
+  ) => {
     const equipment = key === 'none' ? undefined : equipmentDatabase[key];
     const updated = {
       ...formData,
@@ -98,6 +149,94 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
         [slot]: equipment,
       },
     };
+
+    // Limpa o conjunto selecionado quando um equipamento individual é alterado
+    if (['helmet', 'armor', 'weapon', 'boots', 'shield'].includes(slot)) {
+      setSelectedEquipmentSet('none');
+    } else {
+      setSelectedAccessorySet('none');
+    }
+
+    updateHero(updated);
+  };
+
+  const handleEquipmentSetChange = (setKey: string) => {
+    setSelectedEquipmentSet(setKey);
+
+    if (setKey === 'none') {
+      // Limpa apenas os equipamentos (não os acessórios)
+      const updated = {
+        ...formData,
+        equipment: {
+          ...formData.equipment,
+          helmet: undefined,
+          armor: undefined,
+          weapon: undefined,
+          boots: undefined,
+          shield: undefined,
+        },
+      };
+      updateHero(updated);
+      return;
+    }
+
+    const set = equipmentOnlySets[setKey];
+    if (!set) return;
+
+    // Aplica todos os equipamentos do conjunto (mantém acessórios)
+    const updatedEquipment: Hero['equipment'] = { ...formData.equipment };
+
+    for (const [slot, equipmentKey] of Object.entries(set.equipment)) {
+      if (equipmentKey && equipmentDatabase[equipmentKey]) {
+        updatedEquipment[slot as keyof typeof updatedEquipment] = equipmentDatabase[equipmentKey];
+      }
+    }
+
+    const updated = {
+      ...formData,
+      equipment: updatedEquipment,
+    };
+
+    updateHero(updated);
+  };
+
+  const handleAccessorySetChange = (setKey: string) => {
+    setSelectedAccessorySet(setKey);
+
+    if (setKey === 'none') {
+      // Limpa apenas os acessórios (não os equipamentos)
+      const updated = {
+        ...formData,
+        equipment: {
+          ...formData.equipment,
+          accessory: undefined,
+          mount: undefined,
+          ring: undefined,
+          necklace: undefined,
+          belt: undefined,
+        },
+      };
+      updateHero(updated);
+      return;
+    }
+
+    const set = accessoryOnlySets[setKey];
+    if (!set) return;
+
+    // Aplica todos os acessórios do conjunto (mantém equipamentos)
+    const updatedEquipment: Hero['equipment'] = { ...formData.equipment };
+
+    for (const [slot, equipmentKey] of Object.entries(set.equipment)) {
+      if (equipmentKey && equipmentDatabase[equipmentKey]) {
+        updatedEquipment[slot as keyof typeof updatedEquipment] = equipmentDatabase[equipmentKey];
+      }
+    }
+
+    const updated = {
+      ...formData,
+      equipment: updatedEquipment,
+    };
+
     updateHero(updated);
   };
 
@@ -259,6 +398,30 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
           {/* Equipamentos */}
           <div className="mb-4">
             <h4 className="text-md font-semibold text-gray-700 mb-2">Equipamentos</h4>
+
+            {/* Select Master para Conjuntos de Equipamentos */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Aplicar Conjunto de Equipamentos
+              </label>
+              <select
+                value={selectedEquipmentSet}
+                onChange={(e) => handleEquipmentSetChange(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              >
+                <option value="none">Nenhum conjunto</option>
+                {availableEquipmentSets.map((set) => (
+                  <option key={set.value} value={set.value}>
+                    {set.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Selecione um conjunto para aplicar todos os equipamentos automaticamente.
+                Alterar qualquer equipamento individual desmarca o conjunto.
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Elmo</label>
@@ -365,25 +528,144 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Acessório</label>
+            </div>
+
+            {/* Acessórios Separados */}
+            <div className="mb-6 py-3">
+              <h4 className="text-md font-semibold text-gray-700 mb-3">Acessórios</h4>
+
+              {/* Select Master para Conjuntos de Acessórios */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Aplicar Conjunto de Acessórios
+                </label>
                 <select
-                  value={formData.equipment.accessory?.name || 'none'}
-                  onChange={(e) => {
-                    const key = Object.keys(equipmentDatabase).find(
-                      k => equipmentDatabase[k].name === e.target.value
-                    ) || 'none';
-                    handleEquipmentChange('accessory', key);
-                  }}
+                  value={selectedAccessorySet}
+                  onChange={(e) => handleAccessorySetChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                 >
-                  <option value="none">Nenhum</option>
-                  {equipmentByType.accessory.map((eq) => (
-                    <option key={eq.key} value={eq.name}>
-                      {eq.name}
+                  <option value="none">Nenhum conjunto</option>
+                  {availableAccessorySets.map((set) => (
+                    <option key={set.value} value={set.value}>
+                      {set.label}
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Selecione um conjunto para aplicar todos os acessórios automaticamente.
+                  Alterar qualquer acessório individual desmarca o conjunto.
+                </p>
+              </div>
+
+              {/* Primeira linha: 3 selects */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Acessório</label>
+                  <select
+                    value={formData.equipment.accessory?.name || 'none'}
+                    onChange={(e) => {
+                      const key = Object.keys(equipmentDatabase).find(
+                        k => equipmentDatabase[k].name === e.target.value
+                      ) || 'none';
+                      handleEquipmentChange('accessory', key);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  >
+                    <option value="none">Nenhum</option>
+                    {equipmentByType.accessory.map((eq) => (
+                      <option key={eq.key} value={eq.name}>
+                        {eq.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Montaria</label>
+                  <select
+                    value={formData.equipment.mount?.name || 'none'}
+                    onChange={(e) => {
+                      const key = Object.keys(equipmentDatabase).find(
+                        k => equipmentDatabase[k].name === e.target.value
+                      ) || 'none';
+                      handleEquipmentChange('mount', key);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  >
+                    <option value="none">Nenhum</option>
+                    {equipmentByType.mount.map((eq) => (
+                      <option key={eq.key} value={eq.name}>
+                        {eq.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Anel</label>
+                  <select
+                    value={formData.equipment.ring?.name || 'none'}
+                    onChange={(e) => {
+                      const key = Object.keys(equipmentDatabase).find(
+                        k => equipmentDatabase[k].name === e.target.value
+                      ) || 'none';
+                      handleEquipmentChange('ring', key);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  >
+                    <option value="none">Nenhum</option>
+                    {equipmentByType.ring.map((eq) => (
+                      <option key={eq.key} value={eq.name}>
+                        {eq.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Segunda linha: 2 selects */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Colar</label>
+                  <select
+                    value={formData.equipment.necklace?.name || 'none'}
+                    onChange={(e) => {
+                      const key = Object.keys(equipmentDatabase).find(
+                        k => equipmentDatabase[k].name === e.target.value
+                      ) || 'none';
+                      handleEquipmentChange('necklace', key);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  >
+                    <option value="none">Nenhum</option>
+                    {equipmentByType.necklace.map((eq) => (
+                      <option key={eq.key} value={eq.name}>
+                        {eq.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cinto</label>
+                  <select
+                    value={formData.equipment.belt?.name || 'none'}
+                    onChange={(e) => {
+                      const key = Object.keys(equipmentDatabase).find(
+                        k => equipmentDatabase[k].name === e.target.value
+                      ) || 'none';
+                      handleEquipmentChange('belt', key);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  >
+                    <option value="none">Nenhum</option>
+                    {equipmentByType.belt.map((eq) => (
+                      <option key={eq.key} value={eq.name}>
+                        {eq.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>

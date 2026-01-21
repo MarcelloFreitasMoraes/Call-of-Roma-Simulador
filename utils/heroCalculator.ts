@@ -60,6 +60,7 @@ export function calculateHeroFinalStats(hero: Hero): {
     equipmentDamage += hero.equipment.shield.damage || 0;
   }
   
+    // Acessórios separados - todos são somados
   if (hero.equipment.accessory) {
     equipmentHealth += hero.equipment.accessory.hp || 0;
     equipmentDefense += hero.equipment.accessory.defense || 0;
@@ -67,6 +68,34 @@ export function calculateHeroFinalStats(hero: Hero): {
     equipmentDamage += hero.equipment.accessory.damage || 0;
   }
   
+    if (hero.equipment.mount) {
+        equipmentHealth += hero.equipment.mount.hp || 0;
+        equipmentDefense += hero.equipment.mount.defense || 0;
+        equipmentAttack += hero.equipment.mount.attack || 0;
+        equipmentDamage += hero.equipment.mount.damage || 0;
+    }
+
+    if (hero.equipment.ring) {
+        equipmentHealth += hero.equipment.ring.hp || 0;
+        equipmentDefense += hero.equipment.ring.defense || 0;
+        equipmentAttack += hero.equipment.ring.attack || 0;
+        equipmentDamage += hero.equipment.ring.damage || 0;
+    }
+
+    if (hero.equipment.necklace) {
+        equipmentHealth += hero.equipment.necklace.hp || 0;
+        equipmentDefense += hero.equipment.necklace.defense || 0;
+        equipmentAttack += hero.equipment.necklace.attack || 0;
+        equipmentDamage += hero.equipment.necklace.damage || 0;
+    }
+
+    if (hero.equipment.belt) {
+        equipmentHealth += hero.equipment.belt.hp || 0;
+        equipmentDefense += hero.equipment.belt.defense || 0;
+        equipmentAttack += hero.equipment.belt.attack || 0;
+        equipmentDamage += hero.equipment.belt.damage || 0;
+    }
+
   // Aplicar bônus de medalhas (múltiplas podem ser selecionadas)
   let braveryMultiplier = 1.0;
   let dexterityMultiplier = 1.0;

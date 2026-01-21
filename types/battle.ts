@@ -20,7 +20,9 @@ export type UnitType =
 
 // Tipos de equipamentos
 export type EquipmentType = 
-  | 'helmet' | 'armor' | 'weapon' | 'boots' | 'shield' | 'accessory' | 'none';
+  | 'helmet' | 'armor' | 'weapon' | 'boots' | 'shield'
+  | 'accessory' | 'mount' | 'ring' | 'necklace' | 'belt' // Acessórios separados
+  | 'none';
 
 // Equipamento com seus atributos
 export interface Equipment {
@@ -78,7 +80,12 @@ export interface Hero {
     weapon?: Equipment;
     boots?: Equipment;
     shield?: Equipment;
-    accessory?: Equipment;
+    // Acessórios separados
+    accessory?: Equipment; // Acessório genérico
+    mount?: Equipment; // Montaria
+    ring?: Equipment; // Anel
+    necklace?: Equipment; // Colar
+    belt?: Equipment; // Cinto
   };
   
   // Distribuição de tropas em 6 slots
