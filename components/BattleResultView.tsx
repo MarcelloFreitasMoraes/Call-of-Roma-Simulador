@@ -73,34 +73,33 @@ export default function BattleResultView({ result }: BattleResultViewProps) {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <p className="text-sm text-gray-600 mb-1">1. Soldados Sobreviventes</p>
+            <p className="text-sm text-gray-600 mb-1">1. Victory Point</p>
             <p className="text-xl font-bold text-gray-800">
-              {result.performanceMetrics.survivingSoldiers.toLocaleString()}
+              {result.performanceMetrics.victoryPoint}
             </p>
           </div>
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <p className="text-sm text-gray-600 mb-1">2. Diferença de Soldados</p>
+            <p className="text-sm text-gray-600 mb-1">2. Offensiveness</p>
             <p className="text-xl font-bold text-gray-800">
-              {result.performanceMetrics.soldierDifference > 0 ? '+' : ''}
-              {result.performanceMetrics.soldierDifference.toLocaleString()}
+              {result.performanceMetrics.offensiveness.toFixed(3)}
             </p>
           </div>
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <p className="text-sm text-gray-600 mb-1">3. Taxa de Sobrevivência</p>
+            <p className="text-sm text-gray-600 mb-1">3. Defensiveness</p>
             <p className="text-xl font-bold text-gray-800">
-              {(result.performanceMetrics.soldierSurvivalRate * 100).toFixed(2)}%
+              {result.performanceMetrics.defensiveness.toFixed(3)}
             </p>
           </div>
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <p className="text-sm text-gray-600 mb-1">4. Heróis Sobreviventes</p>
+            <p className="text-sm text-gray-600 mb-1">4. Usage</p>
             <p className="text-xl font-bold text-gray-800">
-              {result.performanceMetrics.survivingHeroes}
+              {result.performanceMetrics.usage.toFixed(3)}
             </p>
           </div>
           <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border-2 border-purple-200 md:col-span-2">
-            <p className="text-sm text-gray-600 mb-1">5. Eficiência Geral</p>
+            <p className="text-sm text-gray-600 mb-1">5. Participation</p>
             <p className="text-2xl font-bold text-purple-600">
-              {result.performanceMetrics.overallEfficiency.toFixed(2)}%
+              {result.performanceMetrics.participation.toFixed(3)}
             </p>
           </div>
         </div>

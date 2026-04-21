@@ -1,6 +1,6 @@
 'use client';
 import { Hero, HeroPotential, MedalType, UnitType } from '@/types/battle';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { equipmentByType, equipmentDatabase, equipmentOnlySets, accessoryOnlySets, availableEquipmentSets, availableAccessorySets } from '@/data/equipmentData';
 import { superiorUnits, inferiorUnits } from '@/data/unitTypes';
 import { calculateHeroFinalStats, calculateTotalSoldiers } from '@/utils/heroCalculator';
@@ -20,13 +20,13 @@ const medalOptions: { value: MedalType; label: string }[] = [
 ];
 
 export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false }: HeroFormProps) {
-  const [formData, setFormData] = useState<Hero>(hero);
+  const formData = hero;
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedEquipmentSet, setSelectedEquipmentSet] = useState<string>('none');
-  const [selectedAccessorySet, setSelectedAccessorySet] = useState<string>('none');
+  const selectedEquipmentSet = getCurrentEquipmentSet(formData);
+  const selectedAccessorySet = getCurrentAccessorySet(formData);
 
   // Verifica qual conjunto de equipamentos está aplicado
-  const checkCurrentEquipmentSet = (heroData: Hero) => {
+  function getCurrentEquipmentSet(heroData: Hero): string {
     for (const [setKey, setData] of Object.entries(equipmentOnlySets)) {
       let matches = true;
       for (const [slot, expectedKey] of Object.entries(setData.equipment)) {
@@ -39,15 +39,14 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
         }
       }
       if (matches) {
-        setSelectedEquipmentSet(setKey);
-        return;
+        return setKey;
       }
     }
-    setSelectedEquipmentSet('none');
-  };
+    return 'none';
+  }
 
   // Verifica qual conjunto de acessórios está aplicado
-  const checkCurrentAccessorySet = (heroData: Hero) => {
+  function getCurrentAccessorySet(heroData: Hero): string {
     for (const [setKey, setData] of Object.entries(accessoryOnlySets)) {
       let matches = true;
       for (const [slot, expectedKey] of Object.entries(setData.equipment)) {
@@ -60,21 +59,11 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
         }
       }
       if (matches) {
-        setSelectedAccessorySet(setKey);
-        return;
+        return setKey;
       }
     }
-    setSelectedAccessorySet('none');
-  };
-
-  // Sincroniza com o hero externo quando ele muda
-  useEffect(() => {
-    setFormData(hero);
-    // Verifica qual conjunto está aplicado atualmente
-    checkCurrentEquipmentSet(hero);
-    checkCurrentAccessorySet(hero);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hero.id]);
+    return 'none';
+  }
 
   const updateHero = (updated: Hero) => {
     // Recalcula atributos finais antes de atualizar
@@ -90,7 +79,6 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
       soldiers: totalSoldiers,
     };
     
-    setFormData(finalHero);
     onUpdate(finalHero);
   };
 
@@ -150,19 +138,10 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
       },
     };
 
-    // Limpa o conjunto selecionado quando um equipamento individual é alterado
-    if (['helmet', 'armor', 'weapon', 'boots', 'shield'].includes(slot)) {
-      setSelectedEquipmentSet('none');
-    } else {
-      setSelectedAccessorySet('none');
-    }
-
     updateHero(updated);
   };
 
   const handleEquipmentSetChange = (setKey: string) => {
-    setSelectedEquipmentSet(setKey);
-
     if (setKey === 'none') {
       // Limpa apenas os equipamentos (não os acessórios)
       const updated = {
@@ -201,8 +180,6 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
   };
 
   const handleAccessorySetChange = (setKey: string) => {
-    setSelectedAccessorySet(setKey);
-
     if (setKey === 'none') {
       // Limpa apenas os acessórios (não os equipamentos)
       const updated = {

@@ -114,16 +114,16 @@ export interface BattleResult {
   defenseRemainingHeroes: number;
   // As 5 medidas de performance mencionadas no paper
   performanceMetrics: {
-    // 1. Número de soldados sobreviventes
-    survivingSoldiers: number;
-    // 2. Diferença de soldados (ataque - defesa)
-    soldierDifference: number;
-    // 3. Taxa de sobrevivência de soldados
-    soldierSurvivalRate: number;
-    // 4. Número de heróis sobreviventes
-    survivingHeroes: number;
-    // 5. Eficiência geral (combinação de fatores)
-    overallEfficiency: number;
+    // 1. Victory Point (1 em vitória, 0 caso contrário)
+    victoryPoint: number;
+    // 2. Offensiveness: soldados abatidos / soldados iniciais
+    offensiveness: number;
+    // 3. Defensiveness: soldados restantes / soldados iniciais
+    defensiveness: number;
+    // 4. Usage: fração de heróis não utilizados na batalha
+    usage: number;
+    // 5. Participation: abatidos / média de soldados iniciais por herói inimigo
+    participation: number;
   };
   rounds: number;
   details: BattleRound[];

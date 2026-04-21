@@ -109,7 +109,9 @@ export default function FormationEditor({
         {formation.heroes.length === 0 ? (
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-8 text-center">
             <p className="text-white text-lg">Nenhum herói adicionado ainda.</p>
-            <p className="text-white/70 text-sm mt-2">Clique em "Adicionar Herói" para começar.</p>
+            <p className="text-white/70 text-sm mt-2">
+              Clique em &quot;Adicionar Herói&quot; para começar.
+            </p>
           </div>
         ) : (
           formation.heroes.map((hero, index) => (

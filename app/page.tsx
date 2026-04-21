@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { BattleFormation, BattleResult } from '@/types/battle';
 import { calculateBattle } from '@/utils/battleCalculator';
+import { calculateTotalSoldiers } from '@/utils/heroCalculator';
 import FormationEditor from '@/components/FormationEditor';
 import BattleResultView from '@/components/BattleResultView';
 
@@ -20,8 +21,22 @@ export default function Home() {
   const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
 
   const handleCalculate = () => {
+    const attackTotalSoldiers = attackFormation.heroes.reduce(
+      (sum, hero) => sum + calculateTotalSoldiers(hero.troopDistribution),
+      0
+    );
+    const defenseTotalSoldiers = defenseFormation.heroes.reduce(
+      (sum, hero) => sum + calculateTotalSoldiers(hero.troopDistribution),
+      0
+    );
+
     if (attackFormation.heroes.length === 0 || defenseFormation.heroes.length === 0) {
       alert('Por favor, adicione pelo menos um herói em cada formação!');
+      return;
+    }
+
+    if (attackTotalSoldiers === 0 || defenseTotalSoldiers === 0) {
+      alert('Cada formação precisa ter pelo menos uma tropa para simular a batalha.');
       return;
     }
 
@@ -117,11 +132,11 @@ export default function Home() {
               </li>
             </ul>
             <ol className="list-decimal list-inside space-y-2 mb-4 ml-4">
-              <li>Número de soldados sobreviventes do vencedor</li>
-              <li>Diferença de soldados (ataque - defesa)</li>
-              <li>Taxa de sobrevivência de soldados</li>
-              <li>Número de heróis sobreviventes</li>
-              <li>Eficiência geral (combinação ponderada)</li>
+              <li>Victory Point (1 para vitória, 0 para derrota/empate)</li>
+              <li>Offensiveness (abatidos por soldado inicial)</li>
+              <li>Defensiveness (sobrevivência relativa)</li>
+              <li>Usage (proporção de heróis não utilizados)</li>
+              <li>Participation (impacto relativo no exército inimigo)</li>
             </ol>
             <p className="text-sm text-gray-600 mt-4">
               <em>

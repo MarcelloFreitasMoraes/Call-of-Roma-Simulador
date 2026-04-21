@@ -19,11 +19,14 @@ export function calculateHeroFinalStats(hero: Hero): {
   speed: number;
   totalTroopCapacity: number;
 } {
+  // Potencial escala os atributos-base do herói (3 -> 1.00x, 8 -> 1.25x)
+  const potentialMultiplier = 1 + (hero.potential - 3) * 0.05;
+
   // Atributos base do herói
-  const baseAttack = hero.bravery; // Bravura contribui para ataque
-  const baseDefense = hero.parry; // Bloqueio contribui para defesa
-  const baseHealth = 100; // HP base
-  const baseSpeed = hero.dexterity; // Destreza contribui para velocidade
+  const baseAttack = hero.bravery * potentialMultiplier; // Bravura contribui para ataque
+  const baseDefense = hero.parry * potentialMultiplier; // Bloqueio contribui para defesa
+  const baseHealth = 100 * potentialMultiplier; // HP base
+  const baseSpeed = hero.dexterity * potentialMultiplier; // Destreza contribui para velocidade
   
   // Bônus de equipamentos (usa diretamente os atributos do equipamento)
   let equipmentAttack = 0;

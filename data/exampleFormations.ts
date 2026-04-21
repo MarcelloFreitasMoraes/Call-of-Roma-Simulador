@@ -3,61 +3,56 @@
  * Baseado no contexto do jogo Call of Roma
  */
 
-import { BattleFormation } from '@/types/battle';
+import { BattleFormation, Hero } from '@/types/battle';
+
+function createExampleHero(
+  id: string,
+  name: string,
+  bravery: number,
+  dexterity: number,
+  parry: number,
+  soldiers: number,
+  frontlineUnit: 'hastatus' | 'principes' | 'equites'
+): Hero {
+  return {
+    id,
+    name,
+    potential: 5,
+    bravery,
+    dexterity,
+    parry,
+    attack: bravery,
+    defense: parry,
+    health: 100,
+    speed: dexterity,
+    medals: [],
+    equipment: {},
+    troopDistribution: {
+      slot1: { unitType: frontlineUnit, quantity: soldiers },
+      slot2: { unitType: 'none', quantity: 0 },
+      slot3: { unitType: 'none', quantity: 0 },
+      slot4: { unitType: 'none', quantity: 0 },
+      slot5: { unitType: 'none', quantity: 0 },
+      slot6: { unitType: 'none', quantity: 0 },
+    },
+    maxTroopCapacity: Math.max(soldiers, 10000),
+    soldiers,
+  };
+}
 
 export const exampleAttackFormation: BattleFormation = {
   side: 'attack',
   heroes: [
-    {
-      id: '1',
-      name: 'Legionário Marcus',
-      attack: 150,
-      defense: 120,
-      health: 2000,
-      speed: 110,
-      soldiers: 5000,
-    },
-    {
-      id: '2',
-      name: 'Centurião Gaius',
-      attack: 180,
-      defense: 140,
-      health: 2500,
-      speed: 100,
-      soldiers: 3000,
-    },
-    {
-      id: '3',
-      name: 'Cavaleiro Lucius',
-      attack: 200,
-      defense: 100,
-      health: 1800,
-      speed: 150,
-      soldiers: 2000,
-    },
+    createExampleHero('1', 'Legionário Marcus', 150, 110, 120, 5000, 'hastatus'),
+    createExampleHero('2', 'Centurião Gaius', 180, 100, 140, 3000, 'principes'),
+    createExampleHero('3', 'Cavaleiro Lucius', 200, 150, 100, 2000, 'equites'),
   ],
 };
 
 export const exampleDefenseFormation: BattleFormation = {
   side: 'defense',
   heroes: [
-    {
-      id: '4',
-      name: 'Guardião Tiberius',
-      attack: 120,
-      defense: 180,
-      health: 3000,
-      speed: 90,
-      soldiers: 4000,
-    },
-    {
-      id: '5',
-      name: 'Defensor Publius',
-      attack: 100,
-      defense: 200,
-      health: 3500,
-      speed: 80,
-      soldiers: 3500,
-    },
+    createExampleHero('4', 'Guardião Tiberius', 120, 90, 180, 4000, 'hastatus'),
+    createExampleHero('5', 'Defensor Publius', 100, 80, 200, 3500, 'principes'),
   ],
 };
