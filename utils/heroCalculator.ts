@@ -4,6 +4,7 @@
  */
 
 import { Hero } from '@/types/battle';
+import { AcademyMax } from '@/utils/academyReference';
 
 /**
  * Calcula os atributos finais do herói considerando:
@@ -17,7 +18,7 @@ export function calculateHeroFinalStats(hero: Hero): {
   defense: number;
   health: number;
   speed: number;
-  totalTroopCapacity: number;
+  totalTroops: number;
 } {
   // Potencial escala os atributos-base do herói (3 -> 1.00x, 8 -> 1.25x)
   const potentialMultiplier = 1 + (hero.potential - 3) * 0.05;
@@ -138,10 +139,10 @@ export function calculateHeroFinalStats(hero: Hero): {
     baseSpeed * dexterityMultiplier
   );
   
-  // Capacidade de tropas (faculdade) com bônus de medalha
-  const baseTroopCapacity = hero.maxTroopCapacity;
-  const finalTroopCapacity = Math.floor(
-    baseTroopCapacity * troopCapacityMultiplier
+  // Total de tropas com bônus de medalha e referência de Leadership (Academia nv. máx.)
+  const baseTotalTroops = hero.totalTroops;
+  const finalTotalTroops = Math.floor(
+    baseTotalTroops * troopCapacityMultiplier * AcademyMax.leadershipFaculty
   );
   
   return {
@@ -149,7 +150,7 @@ export function calculateHeroFinalStats(hero: Hero): {
     defense: finalDefense,
     health: finalHealth,
     speed: finalSpeed,
-    totalTroopCapacity: finalTroopCapacity,
+    totalTroops: finalTotalTroops,
   };
 }
 

@@ -91,8 +91,8 @@ export interface Hero {
   // Distribuição de tropas em 6 slots
   troopDistribution: TroopDistribution;
   
-  // Capacidade total de tropas (faculdade)
-  maxTroopCapacity: number;
+  // Total de tropas (soma dos 6 slots)
+  totalTroops: number;
   
   // Soldados totais (soma dos 6 slots)
   soldiers: number;
@@ -129,6 +129,46 @@ export interface BattleResult {
   details: BattleRound[];
 }
 
+export interface BattleSlotRoundDetail {
+  slotIndex: number;
+  unitType: UnitType;
+  before: number;
+  after: number;
+  losses: number;
+}
+
+export interface BattleHeroRoundDetail {
+  side: 'attack' | 'defense';
+  position: number;
+  heroId: string;
+  heroName: string;
+  enteredFromQueue: boolean;
+  soldiersBefore: number;
+  soldiersAfter: number;
+  losses: number;
+  defeated: boolean;
+  slots: BattleSlotRoundDetail[];
+}
+
+export interface BattleRoundReplacementEvent {
+  side: 'attack' | 'defense';
+  position: number;
+  replacedHeroId?: string;
+  replacedHeroName?: string;
+  enteredHeroId: string;
+  enteredHeroName: string;
+}
+
+export interface BattleRoundMatchup {
+  position: number;
+  attackHeroId?: string;
+  attackHeroName?: string;
+  defenseHeroId?: string;
+  defenseHeroName?: string;
+  attackDamage: number;
+  defenseDamage: number;
+}
+
 export interface BattleRound {
   round: number;
   attackSoldiersBefore: number;
@@ -139,6 +179,10 @@ export interface BattleRound {
     attack: number;
     defense: number;
   };
+  matchups: BattleRoundMatchup[];
+  attackHeroes: BattleHeroRoundDetail[];
+  defenseHeroes: BattleHeroRoundDetail[];
+  replacements: BattleRoundReplacementEvent[];
 }
 
 export interface FormationStats {

@@ -1,7 +1,16 @@
 'use client';
 
+import { useRef, type ChangeEvent } from 'react';
+import { toast } from 'sonner';
 import { BattleFormation, Hero } from '@/types/battle';
 import { calculateFormationStats } from '@/utils/battleCalculator';
+import {
+  downloadTextFile,
+  generateFormationTemplate,
+  parseFormationTxt,
+  serializeFormationTxt,
+} from '@/utils/formationTxt';
+import { Button } from '@/components/ui/button';
 import HeroForm from './HeroForm';
 
 interface FormationEditorProps {
@@ -17,6 +26,8 @@ export default function FormationEditor({
   title,
   color,
 }: FormationEditorProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const addHero = () => {
     const newHero: Hero = {
       id: Date.now().toString(),
@@ -39,7 +50,7 @@ export default function FormationEditor({
         slot5: { unitType: 'none', quantity: 0 },
         slot6: { unitType: 'none', quantity: 0 },
       },
-      maxTroopCapacity: 10000,
+      totalTroops: 0,
       soldiers: 0,
     };
     onUpdate({
@@ -61,17 +72,119 @@ export default function FormationEditor({
 
   const stats = calculateFormationStats(formation);
 
+  const handleDownloadTemplate = () => {
+    const name = formation.side === 'attack' ? 'ataque-modelo.txt' : 'defesa-modelo.txt';
+    downloadTextFile(name, generateFormationTemplate(formation.side));
+    toast.success(`Modelo baixado: ${name}`);
+  };
+
+  const handleExportFormation = () => {
+    if (formation.heroes.length === 0) {
+      toast.error('Adicione pelo menos um herói para exportar.');
+      return;
+    }
+    const name = formation.side === 'attack' ? 'formacao-ataque.txt' : 'formacao-defesa.txt';
+    const text = serializeFormationTxt(formation);
+    downloadTextFile(name, text);
+    toast.success(`Arquivo exportado: ${name}`, {
+      description: (
+        <pre className="max-h-48 overflow-auto text-left wrap-break-word font-mono text-xs whitespace-pre-wrap rounded-md border border-border bg-muted/80 p-2 text-foreground">
+          {text}
+        </pre>
+      ),
+      duration: 30_000,
+    });
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = parseFormationTxt(text, formation.side);
+      if (!parsed.ok) {
+        const errText = parsed.errors
+          .map((err) => (err.line > 0 ? `Linha ${err.line}: ${err.message}` : err.message))
+          .join('\n');
+        toast.error('Erro ao importar TXT', {
+          description: (
+            <pre className="max-h-48 overflow-auto whitespace-pre-wrap font-sans text-sm">{errText}</pre>
+          ),
+          duration: 20_000,
+        });
+        return;
+      }
+      onUpdate({ ...formation, heroes: parsed.heroes });
+      toast.success(`Importação concluída: ${parsed.heroes.length} herói(s).`);
+    } catch {
+      toast.error('Não foi possível ler o arquivo.');
+    }
+  };
+
   return (
-    <div className={`bg-gradient-to-br ${color} rounded-xl shadow-lg p-6`}>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">{title}</h2>
-        <button
-          onClick={addHero}
-          className="px-4 py-2 bg-white text-gray-800 rounded-lg hover:bg-gray-100 transition-colors font-semibold shadow-md"
+    <div className={`min-w-0 bg-linear-to-br ${color} rounded-xl shadow-lg p-6`}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,text/plain"
+        className="hidden"
+        onChange={handleFileSelected}
+      />
+
+      <header className="mb-6 flex w-full min-w-0 flex-col gap-3">
+        {/* Título e Adicionar Herói na mesma linha */}
+        <div className="flex min-w-0 flex-row items-start justify-between gap-3">
+          <h2 className="min-w-0 flex-1 text-xl font-bold leading-tight text-white sm:text-2xl">
+            {title}
+          </h2>
+          <Button
+            type="button"
+            onClick={addHero}
+            size="sm"
+            className="shrink-0 border-0 bg-white text-xs font-semibold text-gray-800 shadow-md hover:bg-gray-100 sm:px-4 sm:text-sm"
+          >
+            + Adicionar Herói
+          </Button>
+        </div>
+        {/* Botões de arquivo TXT na linha de baixo, lado a lado */}
+        <div
+          className="flex w-full min-w-0 flex-row flex-wrap justify-end gap-2 sm:flex-nowrap"
+          aria-label="Importar e exportar formação em TXT"
         >
-          + Adicionar Herói
-        </button>
-      </div>
+          <Button
+            type="button"
+            onClick={handleImportClick}
+            size="sm"
+            variant="secondary"
+            className="shrink-0 border-0 bg-white/90 text-xs font-semibold text-gray-900 shadow-md hover:bg-white sm:text-sm"
+          >
+            Importar TXT
+          </Button>
+          <Button
+            type="button"
+            onClick={handleExportFormation}
+            size="sm"
+            variant="secondary"
+            className="shrink-0 border-0 bg-white/90 text-xs font-semibold text-gray-900 shadow-md hover:bg-white sm:text-sm"
+          >
+            Baixar formação
+          </Button>
+          <Button
+            type="button"
+            onClick={handleDownloadTemplate}
+            size="sm"
+            className="shrink-0 border-0 bg-amber-200 text-xs font-semibold text-gray-900 shadow-md hover:bg-amber-100 sm:text-sm"
+          >
+            Baixar modelo
+          </Button>
+        </div>
+      </header>
 
       {/* Estatísticas da Formação */}
       <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 mb-6">

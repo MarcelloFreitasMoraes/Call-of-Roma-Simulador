@@ -35,7 +35,7 @@ function createExampleHero(
       slot5: { unitType: 'none', quantity: 0 },
       slot6: { unitType: 'none', quantity: 0 },
     },
-    maxTroopCapacity: Math.max(soldiers, 10000),
+    totalTroops: Math.max(soldiers, 10000),
     soldiers,
   };
 }

@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { BattleFormation, BattleResult } from '@/types/battle';
+import { ACADEMY_REFERENCE_DESCRIPTION } from '@/utils/academyReference';
 import { calculateBattle } from '@/utils/battleCalculator';
 import { calculateTotalSoldiers } from '@/utils/heroCalculator';
 import FormationEditor from '@/components/FormationEditor';
 import BattleResultView from '@/components/BattleResultView';
+import { Button } from '@/components/ui/button';
 
 export default function Home() {
   const [attackFormation, setAttackFormation] = useState<BattleFormation>({
@@ -31,12 +34,12 @@ export default function Home() {
     );
 
     if (attackFormation.heroes.length === 0 || defenseFormation.heroes.length === 0) {
-      alert('Por favor, adicione pelo menos um herói em cada formação!');
+      toast.error('Por favor, adicione pelo menos um herói em cada formação!');
       return;
     }
 
     if (attackTotalSoldiers === 0 || defenseTotalSoldiers === 0) {
-      alert('Cada formação precisa ter pelo menos uma tropa para simular a batalha.');
+      toast.error('Cada formação precisa ter pelo menos uma tropa para simular a batalha.');
       return;
     }
 
@@ -69,15 +72,17 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8">
         {/* Botão de Calcular */}
         <div className="mb-8 text-center">
-          <button
+          <Button
+            type="button"
             onClick={handleCalculate}
             disabled={
               attackFormation.heroes.length === 0 || defenseFormation.heroes.length === 0
             }
-            className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xl font-bold rounded-xl shadow-lg hover:from-green-600 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95"
+            size="lg"
+            className="h-auto rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-8 py-4 text-xl font-bold text-white shadow-lg transition-transform hover:scale-105 hover:from-green-600 hover:to-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:from-gray-400 disabled:to-gray-500 disabled:hover:scale-100"
           >
             🎯 Calcular Batalha
-          </button>
+          </Button>
         </div>
 
         {/* Formações */}
@@ -114,6 +119,7 @@ export default function Home() {
               Esta calculadora implementa o sistema de batalhas do jogo{' '}
               <strong>Call of Roma</strong>, baseado no paper acadêmico apresentado no SBGames 2014.
             </p>
+            <p className="mb-4 text-sm text-gray-600 italic">{ACADEMY_REFERENCE_DESCRIPTION}</p>
             <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-3">
               Características do Sistema:
             </h3>

@@ -4,6 +4,16 @@ import { useState } from 'react';
 import { equipmentByType, equipmentDatabase, equipmentOnlySets, accessoryOnlySets, availableEquipmentSets, availableAccessorySets } from '@/data/equipmentData';
 import { superiorUnits, inferiorUnits } from '@/data/unitTypes';
 import { calculateHeroFinalStats, calculateTotalSoldiers } from '@/utils/heroCalculator';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+const selectFieldClass = cn(
+  'w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm text-foreground shadow-sm outline-none',
+  'focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50'
+);
 
 interface HeroFormProps {
   hero: Hero;
@@ -76,6 +86,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
       defense: finalStats.defense,
       health: finalStats.health,
       speed: finalStats.speed,
+      totalTroops: totalSoldiers,
       soldiers: totalSoldiers,
     };
     
@@ -226,41 +237,46 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-800">Herói: {formData.name}</h3>
         <div className="flex gap-2">
-          <button
+          <Button
+            type="button"
+            size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm"
+            className="bg-blue-500 text-white hover:bg-blue-600"
           >
             {isExpanded ? '▼ Recolher' : '▶ Expandir'}
-          </button>
+          </Button>
           {showRemove && onRemove && (
-            <button
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
               onClick={onRemove}
-              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm"
+              className="bg-red-500 text-white hover:bg-red-600"
             >
               Remover
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
       {/* Informações Básicas */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-          <input
+          <Label className="mb-1 block text-gray-700">Nome</Label>
+          <Input
             type="text"
             value={formData.name}
             onChange={(e) => handleChange('name', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+            className="h-9 text-gray-900"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Potencial</label>
+          <Label className="mb-1 block text-gray-700">Potencial</Label>
           <select
             value={formData.potential}
             onChange={(e) => handleChange('potential', parseInt(e.target.value) as HeroPotential)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+            className={cn(selectFieldClass, 'h-9')}
           >
             {[3, 4, 5, 6, 7, 8].map((pot) => (
               <option key={pot} value={pot}>
@@ -271,24 +287,13 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cap. Máx. Tropas</label>
-          <input
-            type="number"
-            value={formData.maxTroopCapacity}
-            onChange={(e) => handleChange('maxTroopCapacity', parseInt(e.target.value) || 0)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-            min="0"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Total de Tropas</label>
-          <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md">
-            <span className="font-semibold text-gray-800">
-              {totalSoldiers.toLocaleString()} / {formData.maxTroopCapacity.toLocaleString()}
-            </span>
+          <Label className="mb-1 block text-gray-700">Total de Tropas</Label>
+          <div className="h-9 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-gray-800">
+            <span className="font-semibold">{formData.totalTroops.toLocaleString()}</span>
+            <span className="ml-2 text-xs text-gray-600">(soma dos 6 slots)</span>
           </div>
         </div>
+
       </div>
 
       {/* Atributos Base */}
@@ -296,33 +301,33 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
         <h4 className="text-md font-semibold text-gray-700 mb-2">Atributos Base</h4>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Bravura</label>
-            <input
+            <Label className="mb-1 block text-gray-700">Bravura</Label>
+            <Input
               type="number"
               value={formData.bravery}
               onChange={(e) => handleChange('bravery', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              min="0"
+              className="h-9 text-gray-900"
+              min={0}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Destreza</label>
-            <input
+            <Label className="mb-1 block text-gray-700">Destreza</Label>
+            <Input
               type="number"
               value={formData.dexterity}
               onChange={(e) => handleChange('dexterity', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              min="0"
+              className="h-9 text-gray-900"
+              min={0}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Bloqueio</label>
-            <input
+            <Label className="mb-1 block text-gray-700">Bloqueio</Label>
+            <Input
               type="number"
               value={formData.parry}
               onChange={(e) => handleChange('parry', parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              min="0"
+              className="h-9 text-gray-900"
+              min={0}
             />
           </div>
         </div>
@@ -333,15 +338,19 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
         <h4 className="text-md font-semibold text-gray-700 mb-2">Medalhas</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {medalOptions.map((medal) => (
-            <label key={medal.value} className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <div key={medal.value} className="flex items-center gap-2">
+              <Checkbox
+                id={`medal-${medal.value}`}
                 checked={currentMedals.includes(medal.value)}
-                onChange={() => handleMedalToggle(medal.value)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                onCheckedChange={() => handleMedalToggle(medal.value)}
               />
-              <span className="text-sm text-gray-700">{medal.label}</span>
-            </label>
+              <Label
+                htmlFor={`medal-${medal.value}`}
+                className="cursor-pointer font-normal text-gray-700"
+              >
+                {medal.label}
+              </Label>
+            </div>
           ))}
         </div>
       </div>
@@ -378,13 +387,13 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
 
             {/* Select Master para Conjuntos de Equipamentos */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Label className="mb-1 block text-gray-700">
                 Aplicar Conjunto de Equipamentos
-              </label>
+              </Label>
               <select
                 value={selectedEquipmentSet}
                 onChange={(e) => handleEquipmentSetChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                className={cn(selectFieldClass, 'h-9')}
               >
                 <option value="none">Nenhum conjunto</option>
                 {availableEquipmentSets.map((set) => (
@@ -401,7 +410,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Elmo</label>
+                <Label className="mb-1 block text-gray-700">Elmo</Label>
                 <select
                   value={formData.equipment.helmet?.name || 'none'}
                   onChange={(e) => {
@@ -410,7 +419,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                     ) || 'none';
                     handleEquipmentChange('helmet', key);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className={cn(selectFieldClass, 'h-9')}
                 >
                   <option value="none">Nenhum</option>
                   {equipmentByType.helmet.map((eq) => (
@@ -422,7 +431,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Armadura</label>
+                <Label className="mb-1 block text-gray-700">Armadura</Label>
                 <select
                   value={formData.equipment.armor?.name || 'none'}
                   onChange={(e) => {
@@ -431,7 +440,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                     ) || 'none';
                     handleEquipmentChange('armor', key);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className={cn(selectFieldClass, 'h-9')}
                 >
                   <option value="none">Nenhum</option>
                   {equipmentByType.armor.map((eq) => (
@@ -443,7 +452,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Espada</label>
+                <Label className="mb-1 block text-gray-700">Espada</Label>
                 <select
                   value={formData.equipment.weapon?.name || 'none'}
                   onChange={(e) => {
@@ -452,7 +461,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                     ) || 'none';
                     handleEquipmentChange('weapon', key);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className={cn(selectFieldClass, 'h-9')}
                 >
                   <option value="none">Nenhum</option>
                   {equipmentByType.weapon.map((eq) => (
@@ -464,7 +473,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Botas</label>
+                <Label className="mb-1 block text-gray-700">Botas</Label>
                 <select
                   value={formData.equipment.boots?.name || 'none'}
                   onChange={(e) => {
@@ -473,7 +482,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                     ) || 'none';
                     handleEquipmentChange('boots', key);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className={cn(selectFieldClass, 'h-9')}
                 >
                   <option value="none">Nenhum</option>
                   {equipmentByType.boots.map((eq) => (
@@ -485,7 +494,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Escudo</label>
+                <Label className="mb-1 block text-gray-700">Escudo</Label>
                 <select
                   value={formData.equipment.shield?.name || 'none'}
                   onChange={(e) => {
@@ -494,7 +503,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                     ) || 'none';
                     handleEquipmentChange('shield', key);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className={cn(selectFieldClass, 'h-9')}
                 >
                   <option value="none">Nenhum</option>
                   {equipmentByType.shield.map((eq) => (
@@ -513,13 +522,13 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
 
               {/* Select Master para Conjuntos de Acessórios */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <Label className="mb-1 block text-gray-700">
                   Aplicar Conjunto de Acessórios
-                </label>
+                </Label>
                 <select
                   value={selectedAccessorySet}
                   onChange={(e) => handleAccessorySetChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  className={cn(selectFieldClass, 'h-9')}
                 >
                   <option value="none">Nenhum conjunto</option>
                   {availableAccessorySets.map((set) => (
@@ -537,7 +546,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
               {/* Primeira linha: 3 selects */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Acessório</label>
+                  <Label className="mb-1 block text-gray-700">Acessório</Label>
                   <select
                     value={formData.equipment.accessory?.name || 'none'}
                     onChange={(e) => {
@@ -546,7 +555,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                       ) || 'none';
                       handleEquipmentChange('accessory', key);
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                    className={cn(selectFieldClass, 'h-9')}
                   >
                     <option value="none">Nenhum</option>
                     {equipmentByType.accessory.map((eq) => (
@@ -558,7 +567,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Montaria</label>
+                  <Label className="mb-1 block text-gray-700">Montaria</Label>
                   <select
                     value={formData.equipment.mount?.name || 'none'}
                     onChange={(e) => {
@@ -567,7 +576,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                       ) || 'none';
                       handleEquipmentChange('mount', key);
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                    className={cn(selectFieldClass, 'h-9')}
                   >
                     <option value="none">Nenhum</option>
                     {equipmentByType.mount.map((eq) => (
@@ -579,7 +588,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Anel</label>
+                  <Label className="mb-1 block text-gray-700">Anel</Label>
                   <select
                     value={formData.equipment.ring?.name || 'none'}
                     onChange={(e) => {
@@ -588,7 +597,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                       ) || 'none';
                       handleEquipmentChange('ring', key);
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                    className={cn(selectFieldClass, 'h-9')}
                   >
                     <option value="none">Nenhum</option>
                     {equipmentByType.ring.map((eq) => (
@@ -603,7 +612,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
               {/* Segunda linha: 2 selects */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Colar</label>
+                  <Label className="mb-1 block text-gray-700">Colar</Label>
                   <select
                     value={formData.equipment.necklace?.name || 'none'}
                     onChange={(e) => {
@@ -612,7 +621,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                       ) || 'none';
                       handleEquipmentChange('necklace', key);
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                    className={cn(selectFieldClass, 'h-9')}
                   >
                     <option value="none">Nenhum</option>
                     {equipmentByType.necklace.map((eq) => (
@@ -624,7 +633,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cinto</label>
+                  <Label className="mb-1 block text-gray-700">Cinto</Label>
                   <select
                     value={formData.equipment.belt?.name || 'none'}
                     onChange={(e) => {
@@ -633,7 +642,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                       ) || 'none';
                       handleEquipmentChange('belt', key);
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                    className={cn(selectFieldClass, 'h-9')}
                   >
                     <option value="none">Nenhum</option>
                     {equipmentByType.belt.map((eq) => (
@@ -650,7 +659,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
           {/* Distribuição de Tropas (6 slots - 3 superiores e 3 inferiores) */}
           <div className="mb-4">
             <h4 className="text-md font-semibold text-gray-700 mb-2">
-              Distribuição de Tropas (Total: {totalSoldiers.toLocaleString()} / {formData.maxTroopCapacity.toLocaleString()})
+              Distribuição de Tropas (Total: {totalSoldiers.toLocaleString()})
             </h4>
             
             {/* Slots Superiores (1, 2, 3) - Apenas tropas superiores */}
@@ -662,13 +671,13 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
               <div className="grid grid-cols-3 gap-4">
                 {(['slot1', 'slot2', 'slot3'] as const).map((slot) => (
                   <div key={slot} className="border border-gray-300 rounded-md p-3 bg-blue-50">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                    <Label className="mb-1 block text-xs font-medium text-gray-600">
                       Slot {slot.replace('slot', '')} - Tipo
-                    </label>
+                    </Label>
                     <select
                       value={formData.troopDistribution[slot].unitType}
                       onChange={(e) => handleTroopTypeChange(slot, e.target.value as UnitType)}
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 text-gray-900 bg-white"
+                      className={cn(selectFieldClass, 'mb-2 h-8 text-sm')}
                     >
                       <option value="none">Nenhum</option>
                       {superiorUnits.map((unit) => (
@@ -677,13 +686,13 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                         </option>
                       ))}
                     </select>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Quantidade</label>
-                    <input
+                    <Label className="mb-1 block text-xs font-medium text-gray-600">Quantidade</Label>
+                    <Input
                       type="number"
                       value={formData.troopDistribution[slot].quantity}
                       onChange={(e) => handleTroopQuantityChange(slot, parseInt(e.target.value) || 0)}
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-                      min="0"
+                      className="h-8 text-sm text-gray-900"
+                      min={0}
                     />
                   </div>
                 ))}
@@ -699,13 +708,13 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
               <div className="grid grid-cols-3 gap-4">
                 {(['slot4', 'slot5', 'slot6'] as const).map((slot) => (
                   <div key={slot} className="border border-gray-300 rounded-md p-3 bg-red-50">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                    <Label className="mb-1 block text-xs font-medium text-gray-600">
                       Slot {slot.replace('slot', '')} - Tipo
-                    </label>
+                    </Label>
                     <select
                       value={formData.troopDistribution[slot].unitType}
                       onChange={(e) => handleTroopTypeChange(slot, e.target.value as UnitType)}
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 text-gray-900 bg-white"
+                      className={cn(selectFieldClass, 'mb-2 h-8 text-sm')}
                     >
                       <option value="none">Nenhum</option>
                       {inferiorUnits.map((unit) => (
@@ -714,13 +723,13 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
                         </option>
                       ))}
                     </select>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Quantidade</label>
-                    <input
+                    <Label className="mb-1 block text-xs font-medium text-gray-600">Quantidade</Label>
+                    <Input
                       type="number"
                       value={formData.troopDistribution[slot].quantity}
                       onChange={(e) => handleTroopQuantityChange(slot, parseInt(e.target.value) || 0)}
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-                      min="0"
+                      className="h-8 text-sm text-gray-900"
+                      min={0}
                     />
                   </div>
                 ))}

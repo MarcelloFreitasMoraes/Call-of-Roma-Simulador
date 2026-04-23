@@ -9,28 +9,33 @@
  * - penalidade de retaguarda quando não há linha frontal
  */
 
-import { Hero, BattleFormation, BattleResult, BattleRound, FormationStats, TroopSlot, UnitType } from '@/types/battle';
+import {
+  Hero,
+  BattleFormation,
+  BattleResult,
+  BattleRound,
+  FormationStats,
+  TroopSlot,
+  UnitType,
+  BattleHeroRoundDetail,
+  BattleRoundMatchup,
+  BattleRoundReplacementEvent,
+} from '@/types/battle';
 import { unitTypes } from '@/data/unitTypes';
+import { AcademyMax } from '@/utils/academyReference';
 import { calculateHeroFinalStats, calculateTotalSoldiers } from './heroCalculator';
 
-/**
- * Representa um slot de batalha com suas tropas e stats calculados
- */
 interface BattleSlot {
-  slotIndex: number; // 1-6
+  slotIndex: number;
   unitType: UnitType;
-  quantity: number; // Quantidade de tropas no slot
+  quantity: number;
   unitData: typeof unitTypes[UnitType];
-  // Stats calculados do slot (considerando equipamentos se for tropa superior)
   attack: number;
   defense: number;
   health: number;
   speed: number;
 }
 
-/**
- * Representa um herói em batalha com seus slots
- */
 interface BattleHero {
   hero: Hero;
   heroStats: {
@@ -58,29 +63,46 @@ interface BattleOptions {
   randomSeed?: number;
 }
 
-/**
- * Calcula os stats de um slot individual
- */
+interface HeroRoundSnapshot {
+  side: 'attack' | 'defense';
+  position: number;
+  hero: BattleHero;
+  enteredFromQueue: boolean;
+  soldiersBefore: number;
+  slotsBefore: number[];
+}
+
 function calculateSlotStats(
   slot: TroopSlot,
   slotIndex: number,
   heroStats: { attack: number; defense: number; health: number }
 ): BattleSlot {
   const unitData = unitTypes[slot.unitType];
-  const isSuperior = slotIndex <= 3; // Slots 1-3 são superiores
-  
+  const isSuperior = slotIndex <= 3;
+
   let slotAttack = unitData.baseAttack;
   let slotDefense = unitData.baseDefense;
   let slotHealth = unitData.baseHP;
   const slotSpeed = unitData.speed;
-  
-  // Tropas superiores recebem bônus de equipamentos
+
   if (isSuperior && slot.unitType !== 'none') {
     slotAttack += heroStats.attack;
     slotDefense += heroStats.defense;
     slotHealth += heroStats.health;
   }
-  
+
+  if (slot.unitType !== 'none') {
+    slotHealth *= AcademyMax.medicationTroopHp;
+    slotDefense *= AcademyMax.securityTroopDefense;
+    if (slot.unitType === 'hastatus' || slot.unitType === 'principes') {
+      slotAttack *= AcademyMax.footpaceInfantryOffense;
+    } else if (slot.unitType === 'equites') {
+      slotAttack *= AcademyMax.equitationCavalryOffense;
+    } else if (slot.unitType === 'sagittarii' || slot.unitType === 'ballistae' || slot.unitType === 'onagers') {
+      slotAttack *= AcademyMax.reconnaissanceRearOffense;
+    }
+  }
+
   return {
     slotIndex,
     unitType: slot.unitType,
@@ -93,9 +115,6 @@ function calculateSlotStats(
   };
 }
 
-/**
- * RNG determinístico opcional para reproducibilidade
- */
 function createRng(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
@@ -130,10 +149,6 @@ function sampleUnitDamage(slot: BattleSlot, randomizeDamage: boolean, rng: () =>
   return min + (max - min) * rng();
 }
 
-/**
- * Aproximação de dano baseada nos fatores citados no paper:
- * Offense + Bravery vs Defense + Parry, com dano da unidade em intervalo uniforme.
- */
 function calculateSlotDamage(
   attackerHero: BattleHero,
   attackerSlot: BattleSlot,
@@ -145,7 +160,7 @@ function calculateSlotDamage(
   if (attackerSlot.quantity <= 0 || attackerSlot.unitType === 'none') {
     return 0;
   }
-  
+
   if (defenderSlot.quantity <= 0 || defenderSlot.unitType === 'none') {
     return 0;
   }
@@ -153,7 +168,7 @@ function calculateSlotDamage(
   const offenseTerm = attackerSlot.attack + attackerHero.hero.bravery;
   const defenseTerm = defenderSlot.defense + defenderHero.hero.parry;
   const combatRatio = Math.max(0.15, offenseTerm / Math.max(1, defenseTerm));
-  const rolledDamage = sampleUnitDamage(attackerSlot, randomizeDamage, rng);
+  const rolledDamage = sampleUnitDamage(attackerSlot, randomizeDamage, rng) * AcademyMax.armingDamage;
 
   let rearPenalty = 1;
   if (isRearSlot(attackerSlot) && getFrontalSoldiers(attackerHero) === 0) {
@@ -164,18 +179,16 @@ function calculateSlotDamage(
   return Math.floor(damagePerUnit * attackerSlot.quantity);
 }
 
-/**
- * Aplica dano a um slot específico
- */
 function applyDamageToSlot(slot: BattleSlot, damage: number): void {
   if (slot.quantity <= 0 || slot.unitType === 'none') {
     return;
   }
-  
-  // Calcula quantas tropas morrem baseado no HP por unidade
+
   const hpPerUnit = slot.health;
-  if (hpPerUnit <= 0) return;
-  
+  if (hpPerUnit <= 0) {
+    return;
+  }
+
   const unitsKilled = Math.floor(damage / hpPerUnit);
   slot.quantity = Math.max(0, slot.quantity - unitsKilled);
 }
@@ -183,7 +196,7 @@ function applyDamageToSlot(slot: BattleSlot, damage: number): void {
 function createBattleHeroes(formation: BattleFormation): BattleHero[] {
   return formation.heroes.map(hero => {
     const heroStats = calculateHeroFinalStats(hero);
-    
+
     const slots: BattleSlot[] = [
       calculateSlotStats(hero.troopDistribution.slot1, 1, heroStats),
       calculateSlotStats(hero.troopDistribution.slot2, 2, heroStats),
@@ -192,7 +205,7 @@ function createBattleHeroes(formation: BattleFormation): BattleHero[] {
       calculateSlotStats(hero.troopDistribution.slot5, 5, heroStats),
       calculateSlotStats(hero.troopDistribution.slot6, 6, heroStats),
     ];
-    
+
     return {
       hero,
       heroStats,
@@ -205,9 +218,7 @@ function createBattlefieldSide(heroes: BattleHero[]): BattlefieldSide {
   const initialActive = heroes.slice(0, 3);
   const active: Array<BattleHero | null> = [initialActive[0] ?? null, initialActive[1] ?? null, initialActive[2] ?? null];
   const queue = heroes.slice(3);
-  const usedHeroIds = new Set(
-    active.filter((hero): hero is BattleHero => hero !== null).map(hero => hero.hero.id)
-  );
+  const usedHeroIds = new Set(active.filter((hero): hero is BattleHero => hero !== null).map(hero => hero.hero.id));
 
   return { active, queue, usedHeroIds };
 }
@@ -228,27 +239,79 @@ function getAliveHeroesFromSide(side: BattlefieldSide): number {
   return activeAlive + queueAlive;
 }
 
-function refillActiveSlots(side: BattlefieldSide): void {
+function refillActiveSlots(side: BattlefieldSide, sideLabel: 'attack' | 'defense'): BattleRoundReplacementEvent[] {
+  const replacementEvents: BattleRoundReplacementEvent[] = [];
+
   for (let i = 0; i < side.active.length; i++) {
     const current = side.active[i];
     if (current && getHeroSoldiers(current) > 0) {
       continue;
     }
 
+    const replacedHeroId = current?.hero.id;
+    const replacedHeroName = current?.hero.name;
     side.active[i] = null;
     while (side.queue.length > 0) {
       const candidate = side.queue.shift()!;
       if (getHeroSoldiers(candidate) > 0) {
         side.active[i] = candidate;
         side.usedHeroIds.add(candidate.hero.id);
+        replacementEvents.push({
+          side: sideLabel,
+          position: i,
+          replacedHeroId,
+          replacedHeroName,
+          enteredHeroId: candidate.hero.id,
+          enteredHeroName: candidate.hero.name,
+        });
         break;
       }
     }
   }
+
+  return replacementEvents;
 }
 
-function getActiveHeroes(side: BattlefieldSide): BattleHero[] {
-  return side.active.filter((hero): hero is BattleHero => hero !== null && getHeroSoldiers(hero) > 0);
+function getAliveActivePositions(side: BattlefieldSide): number[] {
+  return side.active
+    .map((hero, position) => ({ hero, position }))
+    .filter(({ hero }) => hero !== null && getHeroSoldiers(hero) > 0)
+    .map(({ position }) => position);
+}
+
+function resolveTargetPosition(side: BattlefieldSide, preferredPosition: number): number | null {
+  const alivePositions = getAliveActivePositions(side);
+  if (alivePositions.length === 0) {
+    return null;
+  }
+
+  if (alivePositions.includes(preferredPosition)) {
+    return preferredPosition;
+  }
+
+  return alivePositions
+    .slice()
+    .sort((a, b) => Math.abs(a - preferredPosition) - Math.abs(b - preferredPosition) || a - b)[0];
+}
+
+function resolveTargetSlot(defenderHero: BattleHero, preferredSlotIndex: number): BattleSlot | null {
+  const aliveSlots = defenderHero.slots.filter(slot => slot.quantity > 0 && slot.unitType !== 'none');
+  if (aliveSlots.length === 0) {
+    return null;
+  }
+
+  const sameSlot = aliveSlots.find(slot => slot.slotIndex === preferredSlotIndex);
+  if (sameSlot) {
+    return sameSlot;
+  }
+
+  return aliveSlots
+    .slice()
+    .sort(
+      (a, b) =>
+        Math.abs(a.slotIndex - preferredSlotIndex) - Math.abs(b.slotIndex - preferredSlotIndex) ||
+        a.slotIndex - b.slotIndex
+    )[0];
 }
 
 function planFormationDamageBySlots(
@@ -256,51 +319,45 @@ function planFormationDamageBySlots(
   defendingSide: BattlefieldSide,
   randomizeDamage: boolean,
   rng: () => number
-): { totalDamage: number; plannedDamages: PlannedSlotDamage[] } {
+): { totalDamage: number; plannedDamages: PlannedSlotDamage[]; damageByAttackerPosition: number[] } {
   let totalDamage = 0;
   const plannedDamages: PlannedSlotDamage[] = [];
-  const attackingHeroes = getActiveHeroes(attackingSide);
-  const defendingHeroes = getActiveHeroes(defendingSide);
+  const damageByAttackerPosition = [0, 0, 0];
 
-  for (const attackerHero of attackingHeroes) {
+  for (let attackerPosition = 0; attackerPosition < attackingSide.active.length; attackerPosition++) {
+    const attackerHero = attackingSide.active[attackerPosition];
+    if (!attackerHero || getHeroSoldiers(attackerHero) <= 0) {
+      continue;
+    }
+
+    const defenderPosition = resolveTargetPosition(defendingSide, attackerPosition);
+    if (defenderPosition === null) {
+      continue;
+    }
+
+    const defenderHero = defendingSide.active[defenderPosition];
+    if (!defenderHero || getHeroSoldiers(defenderHero) <= 0) {
+      continue;
+    }
+
     for (const attackerSlot of attackerHero.slots) {
       if (attackerSlot.quantity <= 0 || attackerSlot.unitType === 'none') {
         continue;
       }
-      
-      // Foco no alvo mais vulnerável entre heróis ativos
-      let weakestDefenderHero: BattleHero | null = null;
-      let weakestDefenderSlot: BattleSlot | null = null;
-      let weakestDefense = Infinity;
-      
-      for (const defenderHero of defendingHeroes) {
-        for (const defenderSlot of defenderHero.slots) {
-          if (defenderSlot.quantity > 0 && defenderSlot.unitType !== 'none') {
-            if (defenderSlot.defense < weakestDefense) {
-              weakestDefense = defenderSlot.defense;
-              weakestDefenderHero = defenderHero;
-              weakestDefenderSlot = defenderSlot;
-            }
-          }
-        }
+
+      const targetSlot = resolveTargetSlot(defenderHero, attackerSlot.slotIndex);
+      if (!targetSlot) {
+        continue;
       }
-      
-      if (weakestDefenderHero && weakestDefenderSlot) {
-        const slotDamage = calculateSlotDamage(
-          attackerHero,
-          attackerSlot,
-          weakestDefenderHero,
-          weakestDefenderSlot,
-          randomizeDamage,
-          rng
-        );
-        totalDamage += slotDamage;
-        plannedDamages.push({ target: weakestDefenderSlot, damage: slotDamage });
-      }
+
+      const slotDamage = calculateSlotDamage(attackerHero, attackerSlot, defenderHero, targetSlot, randomizeDamage, rng);
+      totalDamage += slotDamage;
+      damageByAttackerPosition[attackerPosition] += slotDamage;
+      plannedDamages.push({ target: targetSlot, damage: slotDamage });
     }
   }
-  
-  return { totalDamage, plannedDamages };
+
+  return { totalDamage, plannedDamages, damageByAttackerPosition };
 }
 
 function applyPlannedDamageToFormation(plannedDamages: PlannedSlotDamage[]): void {
@@ -316,9 +373,96 @@ function applyPlannedDamageToFormation(plannedDamages: PlannedSlotDamage[]): voi
   }
 }
 
-/**
- * Calcula uma batalha completa entre duas formações
- */
+function collectActiveHeroSnapshots(
+  side: BattlefieldSide,
+  sideLabel: 'attack' | 'defense',
+  enteredHeroIds: Set<string>
+): HeroRoundSnapshot[] {
+  const snapshots: HeroRoundSnapshot[] = [];
+
+  for (let position = 0; position < side.active.length; position++) {
+    const hero = side.active[position];
+    if (!hero || getHeroSoldiers(hero) <= 0) {
+      continue;
+    }
+
+    snapshots.push({
+      side: sideLabel,
+      position,
+      hero,
+      enteredFromQueue: enteredHeroIds.has(hero.hero.id),
+      soldiersBefore: getHeroSoldiers(hero),
+      slotsBefore: hero.slots.map(slot => slot.quantity),
+    });
+  }
+
+  return snapshots;
+}
+
+function buildHeroRoundDetails(snapshots: HeroRoundSnapshot[]): BattleHeroRoundDetail[] {
+  return snapshots.map(snapshot => {
+    const slots = snapshot.hero.slots.map((slot, slotIdx) => {
+      const before = snapshot.slotsBefore[slotIdx] ?? 0;
+      const after = slot.quantity;
+      return {
+        slotIndex: slot.slotIndex,
+        unitType: slot.unitType,
+        before,
+        after,
+        losses: Math.max(0, before - after),
+      };
+    });
+
+    const soldiersAfter = getHeroSoldiers(snapshot.hero);
+    return {
+      side: snapshot.side,
+      position: snapshot.position,
+      heroId: snapshot.hero.hero.id,
+      heroName: snapshot.hero.hero.name,
+      enteredFromQueue: snapshot.enteredFromQueue,
+      soldiersBefore: snapshot.soldiersBefore,
+      soldiersAfter,
+      losses: Math.max(0, snapshot.soldiersBefore - soldiersAfter),
+      defeated: snapshot.soldiersBefore > 0 && soldiersAfter === 0,
+      slots,
+    };
+  });
+}
+
+function buildRoundMatchups(
+  attackSnapshots: HeroRoundSnapshot[],
+  defenseSnapshots: HeroRoundSnapshot[],
+  attackPlan: { damageByAttackerPosition: number[] },
+  defensePlan: { damageByAttackerPosition: number[] }
+): BattleRoundMatchup[] {
+  const attackByPosition = new Map<number, HeroRoundSnapshot>(attackSnapshots.map(snapshot => [snapshot.position, snapshot]));
+  const defenseByPosition = new Map<number, HeroRoundSnapshot>(defenseSnapshots.map(snapshot => [snapshot.position, snapshot]));
+
+  const matchups: BattleRoundMatchup[] = [];
+  for (let position = 0; position < 3; position++) {
+    const attackHero = attackByPosition.get(position);
+    const defenseHero = defenseByPosition.get(position);
+    const attackDamage = attackPlan.damageByAttackerPosition[position] ?? 0;
+    const defenseDamage = defensePlan.damageByAttackerPosition[position] ?? 0;
+
+    if (!attackHero && !defenseHero && attackDamage === 0 && defenseDamage === 0) {
+      continue;
+    }
+
+    matchups.push({
+      position,
+      attackHeroId: attackHero?.hero.hero.id,
+      attackHeroName: attackHero?.hero.hero.name,
+      defenseHeroId: defenseHero?.hero.hero.id,
+      defenseHeroName: defenseHero?.hero.hero.name,
+      attackDamage,
+      defenseDamage,
+    });
+  }
+
+  return matchups;
+}
+
 export function calculateBattle(
   attackFormation: BattleFormation,
   defenseFormation: BattleFormation,
@@ -329,37 +473,47 @@ export function calculateBattle(
 
   const attackSide = createBattlefieldSide(createBattleHeroes(attackFormation));
   const defenseSide = createBattlefieldSide(createBattleHeroes(defenseFormation));
-  
-  const maxRounds = 50;
+
+  const maxRounds = 501;
   const rounds: BattleRound[] = [];
   let attackKills = 0;
   let defenseKills = 0;
   let round = 0;
-  
+
   while (round < maxRounds) {
     round++;
 
-    refillActiveSlots(attackSide);
-    refillActiveSlots(defenseSide);
-    
+    const attackReplacements = refillActiveSlots(attackSide, 'attack');
+    const defenseReplacements = refillActiveSlots(defenseSide, 'defense');
+    const replacements: BattleRoundReplacementEvent[] = [...attackReplacements, ...defenseReplacements];
+
+    const enteredAttackHeroIds = new Set(attackReplacements.map(event => event.enteredHeroId));
+    const enteredDefenseHeroIds = new Set(defenseReplacements.map(event => event.enteredHeroId));
+    const attackSnapshots = collectActiveHeroSnapshots(attackSide, 'attack', enteredAttackHeroIds);
+    const defenseSnapshots = collectActiveHeroSnapshots(defenseSide, 'defense', enteredDefenseHeroIds);
+
     const attackSoldiersBefore = getTotalSoldiersFromSide(attackSide);
     const defenseSoldiersBefore = getTotalSoldiersFromSide(defenseSide);
-    
+
     if (attackSoldiersBefore === 0 || defenseSoldiersBefore === 0) {
       break;
     }
-    
+
     const attackPlan = planFormationDamageBySlots(attackSide, defenseSide, randomizeDamage, rng);
     const defensePlan = planFormationDamageBySlots(defenseSide, attackSide, randomizeDamage, rng);
-    
+
     applyPlannedDamageToFormation(attackPlan.plannedDamages);
     applyPlannedDamageToFormation(defensePlan.plannedDamages);
-    
+
     const attackSoldiersAfter = getTotalSoldiersFromSide(attackSide);
     const defenseSoldiersAfter = getTotalSoldiersFromSide(defenseSide);
+    const attackHeroes = buildHeroRoundDetails(attackSnapshots);
+    const defenseHeroes = buildHeroRoundDetails(defenseSnapshots);
+    const matchups = buildRoundMatchups(attackSnapshots, defenseSnapshots, attackPlan, defensePlan);
+
     attackKills += Math.max(0, defenseSoldiersBefore - defenseSoldiersAfter);
     defenseKills += Math.max(0, attackSoldiersBefore - attackSoldiersAfter);
-    
+
     rounds.push({
       round,
       attackSoldiersBefore,
@@ -370,13 +524,17 @@ export function calculateBattle(
         attack: attackPlan.totalDamage,
         defense: defensePlan.totalDamage,
       },
+      matchups,
+      attackHeroes,
+      defenseHeroes,
+      replacements,
     });
-    
+
     if (attackSoldiersAfter === 0 || defenseSoldiersAfter === 0) {
       break;
     }
   }
-  
+
   const finalAttackSoldiers = getTotalSoldiersFromSide(attackSide);
   const finalDefenseSoldiers = getTotalSoldiersFromSide(defenseSide);
   const initialAttackSoldiers = attackFormation.heroes.reduce(
@@ -398,24 +556,16 @@ export function calculateBattle(
   } else {
     winner = 'draw';
   }
-  
+
   const winningInitialSoldiers =
     winner === 'attack' ? initialAttackSoldiers : winner === 'defense' ? initialDefenseSoldiers : 0;
   const winningFinalSoldiers =
     winner === 'attack' ? finalAttackSoldiers : winner === 'defense' ? finalDefenseSoldiers : 0;
   const winningKills = winner === 'attack' ? attackKills : winner === 'defense' ? defenseKills : 0;
   const winningHeroCount =
-    winner === 'attack'
-      ? attackFormation.heroes.length
-      : winner === 'defense'
-      ? defenseFormation.heroes.length
-      : 0;
+    winner === 'attack' ? attackFormation.heroes.length : winner === 'defense' ? defenseFormation.heroes.length : 0;
   const winningUsedHeroes =
-    winner === 'attack'
-      ? attackSide.usedHeroIds.size
-      : winner === 'defense'
-      ? defenseSide.usedHeroIds.size
-      : 0;
+    winner === 'attack' ? attackSide.usedHeroIds.size : winner === 'defense' ? defenseSide.usedHeroIds.size : 0;
 
   const enemyInitialAverage =
     winner === 'attack'
@@ -423,22 +573,19 @@ export function calculateBattle(
         ? initialDefenseSoldiers / defenseFormation.heroes.length
         : 0
       : winner === 'defense'
-      ? attackFormation.heroes.length > 0
-        ? initialAttackSoldiers / attackFormation.heroes.length
-        : 0
-      : 0;
+        ? attackFormation.heroes.length > 0
+          ? initialAttackSoldiers / attackFormation.heroes.length
+          : 0
+        : 0;
 
   const performanceMetrics = {
     victoryPoint: winner === 'draw' ? 0 : 1,
     offensiveness: winningInitialSoldiers > 0 ? winningKills / winningInitialSoldiers : 0,
     defensiveness: winningInitialSoldiers > 0 ? winningFinalSoldiers / winningInitialSoldiers : 0,
-    usage:
-      winningHeroCount > 0
-        ? Math.max(0, (winningHeroCount - winningUsedHeroes) / winningHeroCount)
-        : 0,
+    usage: winningHeroCount > 0 ? Math.max(0, (winningHeroCount - winningUsedHeroes) / winningHeroCount) : 0,
     participation: enemyInitialAverage > 0 ? winningKills / enemyInitialAverage : 0,
   };
-  
+
   return {
     winner,
     attackRemainingSoldiers: finalAttackSoldiers,
@@ -451,18 +598,15 @@ export function calculateBattle(
   };
 }
 
-/**
- * Calcula estatísticas de uma formação
- */
 export function calculateFormationStats(formation: BattleFormation): FormationStats {
   const battleHeroes = createBattleHeroes(formation);
-  
+
   let totalAttack = 0;
   let totalDefense = 0;
   let totalHealth = 0;
   let totalSpeed = 0;
   let speedCount = 0;
-  
+
   for (const battleHero of battleHeroes) {
     for (const slot of battleHero.slots) {
       if (slot.quantity > 0 && slot.unitType !== 'none') {
@@ -474,7 +618,7 @@ export function calculateFormationStats(formation: BattleFormation): FormationSt
       }
     }
   }
-  
+
   return {
     totalSoldiers: battleHeroes.reduce((sum, battleHero) => sum + getHeroSoldiers(battleHero), 0),
     totalAttack,
