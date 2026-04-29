@@ -51,6 +51,10 @@ export default function FormationEditor({
         slot6: { unitType: 'none', quantity: 0 },
       },
       totalTroops: 0,
+      arenaCapacity: {
+        base: 0,
+        fixedBonus: 0,
+      },
       soldiers: 0,
     };
     onUpdate({

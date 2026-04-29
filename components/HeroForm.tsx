@@ -3,7 +3,7 @@ import { Hero, HeroPotential, MedalType, UnitType } from '@/types/battle';
 import { useState } from 'react';
 import { equipmentByType, equipmentDatabase, equipmentOnlySets, accessoryOnlySets, availableEquipmentSets, availableAccessorySets } from '@/data/equipmentData';
 import { superiorUnits, inferiorUnits } from '@/data/unitTypes';
-import { calculateHeroFinalStats, calculateTotalSoldiers } from '@/utils/heroCalculator';
+import { calculateArenaCurrentCapacity, calculateHeroFinalStats, calculateTotalSoldiers } from '@/utils/heroCalculator';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -31,6 +31,7 @@ const medalOptions: { value: MedalType; label: string }[] = [
 
 export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false }: HeroFormProps) {
   const formData = hero;
+  const arenaCapacityData = formData.arenaCapacity ?? { base: 0, fixedBonus: 0 };
   const [isExpanded, setIsExpanded] = useState(false);
   const selectedEquipmentSet = getCurrentEquipmentSet(formData);
   const selectedAccessorySet = getCurrentAccessorySet(formData);
@@ -86,7 +87,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
       defense: finalStats.defense,
       health: finalStats.health,
       speed: finalStats.speed,
-      totalTroops: totalSoldiers,
+      totalTroops: finalStats.totalTroops,
       soldiers: totalSoldiers,
     };
     
@@ -95,6 +96,17 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
 
   const handleChange = (field: keyof Hero, value: string | number) => {
     const updated = { ...formData, [field]: value };
+    updateHero(updated);
+  };
+
+  const handleArenaCapacityChange = (field: 'base' | 'fixedBonus', value: number) => {
+    const updated = {
+      ...formData,
+      arenaCapacity: {
+        ...arenaCapacityData,
+        [field]: Math.max(0, value),
+      },
+    };
     updateHero(updated);
   };
 
@@ -230,6 +242,7 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
 
   const finalStats = calculateHeroFinalStats(formData);
   const totalSoldiers = calculateTotalSoldiers(formData.troopDistribution);
+  const arenaCapacity = calculateArenaCurrentCapacity(formData);
   const currentMedals = formData.medals || [];
 
   return (
@@ -287,13 +300,48 @@ export default function HeroForm({ hero, onUpdate, onRemove, showRemove = false 
         </div>
 
         <div>
-          <Label className="mb-1 block text-gray-700">Total de Tropas</Label>
+          <Label className="mb-1 block text-gray-700">Tropas Distribuídas</Label>
           <div className="h-9 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-gray-800">
-            <span className="font-semibold">{formData.totalTroops.toLocaleString()}</span>
+            <span className="font-semibold">{totalSoldiers.toLocaleString()}</span>
             <span className="ml-2 text-xs text-gray-600">(soma dos 6 slots)</span>
           </div>
         </div>
 
+      </div>
+
+      {/* Calculadora de Capacidade Arena */}
+      <div className="mb-4">
+        <h4 className="text-md font-semibold text-gray-700 mb-2">Calculadora de Capacidade (Arena)</h4>
+        <div className="grid grid-cols-2 gap-4 mb-3">
+          <div>
+            <Label className="mb-1 block text-gray-700">Capacidade Base</Label>
+            <Input
+              type="number"
+              value={arenaCapacityData.base}
+              onChange={(e) => handleArenaCapacityChange('base', parseInt(e.target.value) || 0)}
+              className="h-9 text-gray-900"
+              min={0}
+            />
+          </div>
+          <div>
+            <Label className="mb-1 block text-gray-700">Bônus Fixo</Label>
+            <Input
+              type="number"
+              value={arenaCapacityData.fixedBonus}
+              onChange={(e) => handleArenaCapacityChange('fixedBonus', parseInt(e.target.value) || 0)}
+              className="h-9 text-gray-900"
+              min={0}
+            />
+          </div>
+        </div>
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-gray-800">
+          <p>
+            Capacidade Atual: <span className="font-bold text-amber-700">{arenaCapacity.currentCapacity.toLocaleString()}</span>
+          </p>
+          <p className="text-xs text-gray-600 mt-1">
+            Cálculo: {arenaCapacity.baseCapacity.toLocaleString()} (base) + {arenaCapacity.fixedBonus.toLocaleString()} (bônus fixo)
+          </p>
+        </div>
       </div>
 
       {/* Atributos Base */}

@@ -83,7 +83,7 @@ function finalizeHero(hero: Hero): Hero {
     defense: finalStats.defense,
     health: finalStats.health,
     speed: finalStats.speed,
-    totalTroops: totalSoldiers,
+    totalTroops: finalStats.totalTroops,
     soldiers: totalSoldiers,
   };
 }
@@ -140,6 +140,8 @@ type DraftHero = {
   dexterity?: number;
   parry?: number;
   totalTroops?: number;
+  arenaBaseCapacity?: number;
+  arenaFixedBonus?: number;
   legacyMaxTroopCapacity?: number;
   medals: MedalType[];
   equipment: Hero['equipment'];
@@ -218,6 +220,8 @@ function draftToHero(draft: DraftHero, heroIndex: number, errors: FormationTxtEr
 
   const totalTroops = calculateTotalSoldiers(draft.troopDistribution);
   const importedTotalTroops = draft.totalTroops ?? draft.legacyMaxTroopCapacity ?? totalTroops;
+  const arenaBaseCapacity = draft.arenaBaseCapacity ?? importedTotalTroops;
+  const arenaFixedBonus = draft.arenaFixedBonus ?? 0;
 
   const hero: Hero = {
     id,
@@ -234,6 +238,10 @@ function draftToHero(draft: DraftHero, heroIndex: number, errors: FormationTxtEr
     equipment: { ...draft.equipment },
     troopDistribution: draft.troopDistribution,
     totalTroops: importedTotalTroops,
+    arenaCapacity: {
+      base: Math.max(0, arenaBaseCapacity),
+      fixedBonus: Math.max(0, arenaFixedBonus),
+    },
     soldiers: 0,
   };
 
@@ -367,6 +375,20 @@ export function parseFormationTxt(
         else draft.legacyMaxTroopCapacity = n.n;
         continue;
       }
+      if (key === 'arenaCapacity.base') {
+        const n = parseIntSafe(value, 'arenaCapacity.base', lineNum);
+        if (!n.ok) errors.push(n.err);
+        else if (n.n < 0) errors.push({ line: lineNum, message: 'arenaCapacity.base não pode ser negativo' });
+        else draft.arenaBaseCapacity = n.n;
+        continue;
+      }
+      if (key === 'arenaCapacity.fixedBonus') {
+        const n = parseIntSafe(value, 'arenaCapacity.fixedBonus', lineNum);
+        if (!n.ok) errors.push(n.err);
+        else if (n.n < 0) errors.push({ line: lineNum, message: 'arenaCapacity.fixedBonus não pode ser negativo' });
+        else draft.arenaFixedBonus = n.n;
+        continue;
+      }
       if (key === 'medals') {
         const m = parseMedalsLine(value, lineNum);
         if (!m.ok) errors.push(m.err);
@@ -448,6 +470,8 @@ export function serializeFormationTxt(formation: BattleFormation): string {
     lines.push(`dexterity=${hero.dexterity}`);
     lines.push(`parry=${hero.parry}`);
     lines.push(`totalTroops=${calculateTotalSoldiers(hero.troopDistribution)}`);
+    lines.push(`arenaCapacity.base=${hero.arenaCapacity.base}`);
+    lines.push(`arenaCapacity.fixedBonus=${hero.arenaCapacity.fixedBonus}`);
     lines.push(`medals=${hero.medals.join(',')}`);
 
     for (let s = 1; s <= 6; s++) {
@@ -486,6 +510,9 @@ export function generateFormationTemplate(side: 'attack' | 'defense'): string {
     'parry=100',
     '# totalTroops será recalculado automaticamente pela soma dos slots',
     'totalTroops=1000',
+    '# Campos da calculadora de Arena (capacidade atual = base + bônus fixo)',
+    'arenaCapacity.base=1000',
+    'arenaCapacity.fixedBonus=0',
     '# medals separadas por vírgula: cicero,dentatus,leonidas,marca-cesar',
     'medals=',
     '# Slots 1-3: hastatus | principes | equites | none',

@@ -6,6 +6,22 @@
 import { Hero } from '@/types/battle';
 import { AcademyMax } from '@/utils/academyReference';
 
+export function calculateArenaCurrentCapacity(hero: Hero): {
+  baseCapacity: number;
+  fixedBonus: number;
+  currentCapacity: number;
+} {
+  const baseCapacity = Math.max(0, hero.arenaCapacity?.base ?? 0);
+  const fixedBonus = Math.max(0, hero.arenaCapacity?.fixedBonus ?? 0);
+  const currentCapacity = baseCapacity + fixedBonus;
+
+  return {
+    baseCapacity,
+    fixedBonus,
+    currentCapacity,
+  };
+}
+
 /**
  * Calcula os atributos finais do herói considerando:
  * - Atributos base (bravura, destreza, bloqueio)
@@ -140,7 +156,7 @@ export function calculateHeroFinalStats(hero: Hero): {
   );
   
   // Total de tropas com bônus de medalha e referência de Leadership (Academia nv. máx.)
-  const baseTotalTroops = hero.totalTroops;
+  const baseTotalTroops = calculateArenaCurrentCapacity(hero).currentCapacity;
   const finalTotalTroops = Math.floor(
     baseTotalTroops * troopCapacityMultiplier * AcademyMax.leadershipFaculty
   );

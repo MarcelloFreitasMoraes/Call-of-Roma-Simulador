@@ -93,6 +93,12 @@ export interface Hero {
   
   // Total de tropas (soma dos 6 slots)
   totalTroops: number;
+
+  // Capacidade de tropas na Arena (calculadora)
+  arenaCapacity: {
+    base: number; // Capacidade base do herói
+    fixedBonus: number; // Bônus fixos aplicados na Arena
+  };
   
   // Soldados totais (soma dos 6 slots)
   soldiers: number;

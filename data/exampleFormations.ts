@@ -36,6 +36,10 @@ function createExampleHero(
       slot6: { unitType: 'none', quantity: 0 },
     },
     totalTroops: Math.max(soldiers, 10000),
+    arenaCapacity: {
+      base: Math.max(soldiers, 10000),
+      fixedBonus: 0,
+    },
     soldiers,
   };
 }
